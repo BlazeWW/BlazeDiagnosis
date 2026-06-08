@@ -41,3 +41,6 @@ I learned:
 I am blocked by:
 Next I will:
 ```
+
+# TASK COMPLETED
+- read through the documentation
