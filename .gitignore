@@ -29,3 +29,5 @@ dist/
 build/
 coverage/
 .DS_Store
+
+/generated/prisma
