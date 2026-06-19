@@ -72,21 +72,29 @@ interface Payload {
 }
 
 function handleClientAction(payload: Payload) {
-    const isValid = validateInput(payload.data);
-    
-    if (!isValid) {
+    try {
+
+        const validatedData = validateInput(payload.data);
+        
+        const transactionResult = executeDatabaseTransaction(validatedData);
+        const workflowStatus = evaluateWorkflowStatus(transactionResult);
+        
+        updateClientUIState(workflowStatus);
+    } catch (error) {
+      fails or invalid structures are passed
         return handleValidationError();
     }
-
-    const transactionResult = executeDatabaseTransaction(payload.data);
-    const workflowStatus = evaluateWorkflowStatus(transactionResult);
-    
-    updateClientUIState(workflowStatus);
 }
 
-function validateInput(data: any): boolean {
-    // Implement your schema validation logic here
-    return true; // Placeholder
+
+
+function validateInput(data: unknown): SupplierResponseInput {
+    try {
+        return SupplierResponseInputSchema.parse(data);
+    } catch (error) {
+        console.error('[SECURITY ALERT] Malformed payload rejected by Zod runtime parsing:', error);
+        throw error;
+    }
 }
 
 function handleValidationError(): ServerAction {

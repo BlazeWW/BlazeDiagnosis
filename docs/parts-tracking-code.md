@@ -1,21 +1,26 @@
 # Backend Setup (Node.js & PostgreSQL)
-
-<!-- CREATE TABLE jobs (
+CREATE TABLE jobs (
     id SERIAL PRIMARY KEY,
-    job_card_number VARCHAR(50) UNIQUE NOT NULL,
-    description TEXT
+    tenant_id VARCHAR(255) NOT NULL,
+    job_card_number VARCHAR(50) NOT NULL,
+    description TEXT,
+    UNIQUE (tenant_id, job_card_number) -- Scoped uniqueness
 );
 
 CREATE TABLE parts_tracking (
     id SERIAL PRIMARY KEY,
+    tenant_id VARCHAR(255) NOT NULL, -- Isolated tenant field
     job_id INT REFERENCES jobs(id) ON DELETE CASCADE,
     part_name VARCHAR(255) NOT NULL,
     quantity INT DEFAULT 1,
-    status VARCHAR(50) DEFAULT 'Pending', -- Pending, Ordered, Shipped, Delivered
+    status VARCHAR(50) DEFAULT 'Pending',
     estimated_delivery DATE,
     is_delayed BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-); -->
+);
+
+# Index for tenant queries has been added
+CREATE INDEX idx_parts_tenant_status ON parts_tracking (tenant_id, status, estimated_delivery);
 
 # API Implementation Strategy
 
@@ -25,106 +30,161 @@ UPDATE parts_tracking
 SET is_delayed = TRUE 
 WHERE status != 'Delivered' AND estimated_delivery < CURRENT_DATE; -->
 
-# Database Setup (Prisma Schema)
+# Database Setup (Drizzle Schema)
 
-<!-- model Job {
-  id            String          @id @default(uuid())
-  jobCardNumber String          @unique
-  description   String?         @db.Text // Using @db.Text for potentially longer descriptions
-  parts         PartsTracking[]  @relation("JobParts") // Named relation for clarity
-  createdAt     DateTime        @default(now())
-}
+import { pgTable, uuid, varchar, text, integer, date, boolean, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
 
-model PartsTracking {
-  id                String   @id @default(uuid())
-  jobId             String
-  job               Job      @relation("JobParts", fields: [jobId], references: [id], onDelete: Cascade)
-  partName          String
-  quantity          Int      @default(1)
-  status            String   @default("Pending") // Pending, Ordered, Shipped, Delivered
-  estimatedDelivery DateTime?
-  isDelayed         Boolean  @default(false)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-} -->
+// Jobs Table
+export const jobs = pgTable('jobs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  tenantId: varchar('tenant_id', { length: 255 }).notNull(),
+  jobCardNumber: varchar('job_card_number', { length: 50 }).notNull(),
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex('tenant_job_card_idx').on(table.tenantId, table.jobCardNumber)
+]);
 
-# Express API Endpoints (Node.js + Prisma)
+// Parts Tracking Table
+export const partsTracking = pgTable('parts_tracking', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  tenantId: varchar('tenant_id', { length: 255 }).notNull(),
+  jobId: uuid('job_id').references(() => jobs.id, { onDelete: 'cascade' }).notNull(),
+  partName: varchar('part_name', { length: 255 }).notNull(),
+  quantity: integer('quantity').default(1).notNull(),
+  status: varchar('status', { length: 50 }).default('Pending').notNull(),
+  estimatedDelivery: date('estimated_delivery'),
+  isDelayed: boolean('is_delayed').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
 
-<!-- app.post('/api/parts', async (req, res) => {
+// Relationships
+export const jobsRelations = relations(jobs, ({ many }) => ({
+  parts: many(partsTracking),
+}));
+
+export const partsTrackingRelations = relations(partsTracking, ({ one }) => ({
+  job: one(jobs, {
+    fields: [partsTracking.jobId],
+    references: [jobs.id],
+  }),
+}));
+
+
+# Express API Endpoints (Node.js + Drizzle Prisma)
+
+import { db } from './db'; 
+import { jobs, partsTracking } from './schema';
+import { and, eq } from 'drizzle-orm';
+
+app.post('/api/parts', async (req, res) => {
   const { jobCardNumber, partName, quantity } = req.body;
+  const tenantId = req.user.tenantId; 
 
+  // Validate input fields
   if (!jobCardNumber || !partName || !quantity) {
     return res.status(400).json({ error: 'All fields are required.' });
   }
 
   try {
-    // Use upsert to find or create the job card
-    const job = await prisma.job.upsert({
-      where: { jobCardNumber },
-      update: {},
-      create: { jobCardNumber }
-    });
+    // Upsert job record
+    const [job] = await db.insert(jobs)
+      .values({ tenantId, jobCardNumber })
+      .onConflictDoUpdate({
+        target: [jobs.tenantId, jobs.jobCardNumber],
+        set: { tenantId } 
+      })
+      .returning();
 
-    // Create a new part tracking entry
-    const newPart = await prisma.partsTracking.create({
-      data: { jobId: job.id, partName, quantity }
-    });
+    // Insert tracking part linked to job ID
+    const [newPart] = await db.insert(partsTracking)
+      .values({ 
+        tenantId, 
+        jobId: job.id, 
+        partName, 
+        quantity 
+      })
+      .returning();
 
     return res.status(201).json(newPart);
   } catch (error) {
     console.error('Error creating part:', error);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
-}); -->
+});
 
 
 # Update Delivery Status & Notify
 
-<!-- pp.patch('/api/parts/:id/status', async (req, res) => {
+app.patch('/api/parts/:id/status', async (req, res) => {
   const { id } = req.params;
-  const { status } = req.body; // e.g., "Delivered"
+  const { status } = req.body;
+  const tenantId = req.user.tenantId;
 
   try {
-    const updatedPart = await prisma.partsTracking.update({
-      where: { id },
-      data: { status },
-      include: { job: true }
-    });
+    // Scoped update prevents cross-tenant cross-talk
+    const updatedParts = await db.update(partsTracking)
+      .set({ status, updatedAt: new Date() })
+      .where(
+        and(
+          eq(partsTracking.id, id),
+          eq(partsTracking.tenantId, tenantId)
+        )
+      )
+      .returning();
 
-    // Trigger notification if status is Delivered
-    if (status === 'Delivered') {
-      await sendNotification(updatedPart.job.jobCardNumber, updatedPart.partName);
+    if (!updatedParts.length) {
+      return res.status(404).json({ error: 'Part record not found in this scope.' });
     }
 
-    res.status(200).json(updatedPart);
+    // Fetch relational data safely
+    const updatedPartWithJob = await db.query.partsTracking.findFirst({
+      where: eq(partsTracking.id, id),
+      with: { job: true }
+    });
+
+    if (status === 'Delivered') {
+      await sendNotification(updatedPartWithJob.job.jobCardNumber, updatedPartWithJob.partName, tenantId);
+    }
+
+    return res.status(200).json(updatedPartWithJob);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
-}); -->
+});
+
+
 
 # Automatic Delay Flagging (Daily Cron Job)
 
-<!-- import cron from 'node-cron';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import cron from 'node-cron';
+import { db } from './db';
+import { partsTracking } from './schema';
+import { and, not, eq, lt } from 'drizzle-orm';
 
 const updateDelayedParts = async () => {
   try {
-    const result = await prisma.partsTracking.updateMany({
-      where: {
-        status: { not: 'Delivered' },
-        estimatedDelivery: { lt: new Date() }
-      },
-      data: { isDelayed: true }
-    });
-    console.log(`${result.count} parts updated to delayed status.`);
+    const currentDate = new Date().toISOString().split('T')[0]; // Extract current date in YYYY-MM-DD format
+    const result = await db.update(partsTracking)
+      .set({ isDelayed: true })
+      .where(
+        and(
+          not(eq(partsTracking.status, 'Delivered')),
+          lt(partsTracking.estimatedDelivery, currentDate)
+        )
+      );
+
+    console.log(`[Cron Executed] Parts flagged as delayed: ${result.changes} parts updated.`);
   } catch (error) {
-    console.error('Error updating parts:', error);
+    console.error('Error updating delayed parts:', error);
   }
 };
 
-cron.schedule('0 0 * * *', updateDelayedParts); -->
+// Schedule the task to run daily at midnight
+cron.schedule('0 0 * * *', updateDelayedParts);
+
 
 
 # Frontend UI Component (React + Tailwind CSS)
@@ -134,7 +194,7 @@ cron.schedule('0 0 * * *', updateDelayedParts); -->
 export default function PartsTracker({ jobId }) {
   const [parts, setParts] = useState([]);
 
-  // Fetch parts data from Node.js API
+  
   useEffect(() => {
     const fetchParts = async () => {
       try {
@@ -195,8 +255,29 @@ export default function PartsTracker({ jobId }) {
   );
 } -->
 
+# Added a fetch parts job
 
+app.get('/api/parts/job/:jobId', async (req, res) => {
+  const { jobId } = req.params;
+  const tenantId = req.user.tenantId;
 
+  try {
+    const parts = await db
+      .select()
+      .from(partsTracking)
+      .where(
+        and(
+          eq(partsTracking.jobId, jobId),
+          eq(partsTracking.tenantId, tenantId)
+        )
+      );
+
+    return res.status(200).json(parts);
+  } catch (error) {
+    console.error('Error fetching parts:', error); // Added logging for better debugging
+    return res.status(500).json({ error: 'Internal Server Error' }); // More generic error message
+  }
+});
 
 
 
