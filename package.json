@@ -20,6 +20,10 @@
     "db:push": "pnpm --filter backend db:push",
     "db:seed": "pnpm --filter backend db:seed"
   },
+  "dependencies": {
+    "lucide-react": "^1.20.0"
+  },
+
   "devDependencies": {
     "zod": "^3.23.8"
   }

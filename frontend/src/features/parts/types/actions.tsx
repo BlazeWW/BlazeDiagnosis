@@ -1,43 +1,43 @@
-// 'use server';
+'use server';
 
-// import { db } from '@/db';
-// import { partsRequests } from '@/db/schema';
-// import { requireAuth } from '@/server/auth';
-// import { revalidatePath } from 'next/cache';  The database import are problematic as i dont understand help on this will be greatly appreciated 
-// import { createPartsRequestDraftSchema } from './schemas';
+import { revalidatePath } from 'next/cache';
 
-export async function createPartsRequestDraftAction(rawInput: unknown) {
-  const session = await requireAuth();
+interface CreatePartsRequestInput {
+  jobId: string;
+  description: string;
+  quantity: number;
+}
 
-  // Validate input using schema
-  const validationResult = createPartsRequestDraftSchema.safeParse(rawInput);
-  if (!validationResult.success) {
-    return {
-      success: false,
-      errors: validationResult.error.flatten().fieldErrors,
-    };
-  }
-
-  const { partNumber, description, quantity } = validationResult.data;
-
+export async function createPartsRequestDraftAction(payload: CreatePartsRequestInput) {
   try {
-    // Insert new parts request draft
-    const [newDraft] = await db
-      .insert(partsRequests)
-      .values({
-        tenantId: session.tenantId,
-        partNumber,
-        description,
-        quantity,
-        status: 'draft', // Ensures deterministic union compliance
-      })
-      .returning();
+   
+    const session = { token: 'your-auth-token' }; 
+    const { jobId, description, quantity } = payload;
 
+    const backendUrl = (globalThis as any).process?.env?.NEXT_PUBLIC_BACKEND_URL;
+    const response = await fetch(`${backendUrl}/api/parts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.token}`,
+      },
+      body: JSON.stringify({
+        jobId,        
+        description,   
+        quantity,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Backend failed to process draft record.');
+    }
+
+    const result = await response.json();
     revalidatePath('/dashboard/parts');
-    
+
     return {
       success: true,
-      data: { id: newDraft.id },
+      data: { id: result.data?.id || result.id },
     };
   } catch (error) {
     console.error('Error creating parts request draft:', error);
