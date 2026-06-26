@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { fetchCustomers } from '@/lib/apiClient';
 import type { Customer } from '@/types/customers';
 import { useRouter } from 'next/navigation';
+import { deleteCustomer } from '@/lib/apiClient';
 
 function getCustomerName(customer: Customer) {
   const name = `${customer.firstName ?? ''} ${customer.lastName ?? ''}`.trim();
@@ -34,6 +35,15 @@ export function CustomerList() {
   const [query, setQuery] = useState('');
   const router = useRouter();
 
+  const handleDelete = async (id: string) => {
+  if (!confirm('Archive this customer?')) return;
+  try {
+    await deleteCustomer(id);
+    setCustomers((current) => current.filter((c) => c.id !== id));
+  } catch (err) {
+    setError(err instanceof Error ? err.message : 'Failed to delete customer.');
+  }
+};
   useEffect(() => {
     const loadCustomers = async () => {
       try {
@@ -154,6 +164,15 @@ export function CustomerList() {
                     >
                       {customer.status ?? 'Active'}
                     </StatusBadge>
+                  </td>
+                  <td className={tableCellClassName}>
+                    <button
+                      className="text-xs text-destructive hover:underline"
+                      onClick={(e) => { e.stopPropagation(); void handleDelete(customer.id); }}
+                      type="button"
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
               ))}

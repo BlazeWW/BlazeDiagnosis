@@ -67,6 +67,24 @@ We reviewed our build files, codebase roots, and standard initialization scripts
   3. **Data Integrity Constraints:** Upgrading the duplicate checks to use database-level unique composite constraints on `(tenant_id, email)` and `(tenant_id, phone)` to avoid code-level race conditions.
   4. **Performance Indexing:** Appending multi-column indexes across `vehicles`, `customers`, and `job_cards` to prevent slow sequential database scans when filtering workflows by tenant context.
 
+#  Pod 8: Security Sign-Off & Compliance Notes
+
+**Date:** June 25, 2026  
+**Status:**  APPROVED FOR DEMO  
+
+As part of the final cleanup for Week 4, Pod 8 has completed a targeted security audit of the application boundary to ensure demo readiness. 
+
+### 1. Secrets & Credentials Management
+* **Zero Hardcoded Secrets:** Confirmed that all sensitive configurations (database credentials, supplier tokens, and authentication signing keys) have been completely removed from the source code and are delegated strictly to protected environment variables (`.env`).
+* **Demo Account Isolation:** The database seed files use isolated, low-privilege mock credentials (`staff@blazediagnosis.local`) meant strictly for the demonstration environment.
+
+### 2. Payload Validation & Sanitization
+* **Injection Prevention:** Input pathways for critical business logic—specifically Customer Creation, Vehicle Asset Registration, and Quote Line Items—have been reviewed for basic input validation to prevent cross-site scripting (XSS) and database syntax errors during the live presentation.
+
+### 3. Audit Trail & Data Integrity
+* **Immutable Event Streams:** Verified that the logging framework accurately captures and prints out the critical operational events (`USER_AUTH_SUCCESS`, `JOB_CARD_INITIALIZED`, and `FINANCIAL_INVOICE_GENERATED`).
+* **State Protection:** Crucial pricing calculations (transforming an approved Quote into a final Invoice) are handled and computed strictly server-side. Client-side browser tampering cannot modify the ultimate invoice ledger total.
+
 ### Roles
-* **Owner:** JW Blignaut
-* **Contributors:** Gerrit Dry, Ruvan De Klerk
+* **Owner:** Gerrit Dry
+* **Contributors:** Ruvan De Klerk, JW Blignaut

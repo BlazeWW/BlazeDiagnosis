@@ -5,7 +5,7 @@ export async function requireTenantContext() {
   console.log("Mock tenant context called");
   
   // Use the tenant ID you just created
-  const tenantId = "efb29b83-c510-44bb-a74a-e3b0c5d1349b";
+  const tenantId = process.env.MOCK_TENANT_ID || "temp-tenant-id";
   
   console.log("Using tenant ID:", tenantId);
   

@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { createCustomer } from '@/lib/apiClient';
+import { createCustomer, updateCustomer } from '@/lib/apiClient';
 import type { CustomerFormState } from '@/types/customers';
 
 const initialState: CustomerFormState = {
@@ -29,9 +29,20 @@ const initialState: CustomerFormState = {
   taxNumber: '',
 };
 
-export function CustomerForm() {
-  const [customer, setCustomer] = useState<CustomerFormState>(initialState);
+interface CustomerFormProps {
+  customerId?: string;
+  initialData?: CustomerFormState;
+  onSuccess?: () => void;
+}
+
+export function CustomerForm({
+  customerId,
+  initialData,
+  onSuccess,
+}: CustomerFormProps = {}) {
+  const [customer, setCustomer] = useState<CustomerFormState>(initialData ?? initialState);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const isEditing = Boolean(customerId);
 
   const handleChange = (
     event: ChangeEvent<
@@ -52,22 +63,39 @@ export function CustomerForm() {
     setStatusMessage(null);
 
     try {
-      await createCustomer({
-        firstName: customer.firstName,
-        lastName: customer.lastName,
-        email: customer.email,
-        mobileNumber: customer.mobileNumber,
-        alternateNumber: customer.alternateNumber || undefined,
-        companyName: customer.companyName || undefined,
-        taxNumber: customer.taxNumber || undefined,
-        address: customer.address || undefined,
-        preferredCommunicationChannel:
-          customer.preferredCommunicationChannel || undefined,
-        marketingConsent: customer.marketingConsent,
-      });
-
-      setStatusMessage('Customer saved successfully.');
-      setCustomer(initialState);
+      if (isEditing && customerId) {
+        await updateCustomer(customerId, {
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+          email: customer.email,
+          mobileNumber: customer.mobileNumber,
+          alternateNumber: customer.alternateNumber || undefined,
+          companyName: customer.companyName || undefined,
+          taxNumber: customer.taxNumber || undefined,
+          address: customer.address || undefined,
+          preferredCommunicationChannel:
+            customer.preferredCommunicationChannel || undefined,
+          marketingConsent: customer.marketingConsent,
+        });
+        setStatusMessage('Customer updated successfully.');
+      } else {
+        await createCustomer({
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+          email: customer.email,
+          mobileNumber: customer.mobileNumber,
+          alternateNumber: customer.alternateNumber || undefined,
+          companyName: customer.companyName || undefined,
+          taxNumber: customer.taxNumber || undefined,
+          address: customer.address || undefined,
+          preferredCommunicationChannel:
+            customer.preferredCommunicationChannel || undefined,
+          marketingConsent: customer.marketingConsent,
+        });
+        setStatusMessage('Customer saved successfully.');
+        setCustomer(initialState);
+      }
+      onSuccess?.();
     } catch (err) {
       setStatusMessage(
         err instanceof Error ? err.message : 'Failed to save customer.',
@@ -212,7 +240,7 @@ export function CustomerForm() {
 
           <FormActions>
             <Button type="submit" variant="accent">
-              Save customer
+              {isEditing ? 'Update customer' : 'Save customer'}
             </Button>
             <Button
               onClick={() => setCustomer(initialState)}

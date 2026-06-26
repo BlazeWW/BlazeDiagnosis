@@ -2,7 +2,7 @@
 
 import type { ChangeEvent, FormEvent } from 'react';
 import { useState } from 'react';
-import { createVehicle } from '@/lib/apiClient';
+import { createVehicle, updateVehicle } from '@/lib/apiClient';
 
 import { FormActions, FormField } from '@/components/forms';
 import { Button } from '@/components/ui/button';
@@ -31,9 +31,19 @@ const initialState: VehicleFormState = {
   year: '',
 };
 
-export function VehicleForm() {
-  const [vehicle, setVehicle] = useState<VehicleFormState>(initialState);
+  interface VehicleFormProps {
+  vehicleId?: string;
+  initialData?: VehicleFormState;
+  onSuccess?: () => void;
+}
+
+// 2. Use a single component definition that accepts props
+export function VehicleForm({ vehicleId, initialData, onSuccess }: VehicleFormProps = {}) {
+  // 3. Fallback to initialState if no initialData is provided
+  const [vehicle, setVehicle] = useState<VehicleFormState>(initialData ?? initialState);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  
+  const isEditing = Boolean(vehicleId);
 
   const handleChange = (
     event: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -42,29 +52,48 @@ export function VehicleForm() {
     setVehicle((current) => ({ ...current, [name]: value }));
   };
 
-  //Added Handle Submit
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setStatusMessage(null);
 
     try {
-      await createVehicle({
-        customerId: vehicle.customerId,
-        registrationNumber: vehicle.registrationNumber,
-        vin: vehicle.vin || undefined,
-        make: vehicle.make,
-        model: vehicle.model,
-        variant: vehicle.variant || undefined,
-        year: vehicle.year ? Number(vehicle.year) : undefined,
-        mileage: vehicle.odometer ? Number(vehicle.odometer) : undefined,
-        color: vehicle.color || undefined,
-        engineDetails: vehicle.engineType || undefined,
-        fuelType: vehicle.fuelType || undefined,
-        transmission: vehicle.transmission || undefined,
-      });
-
-      setStatusMessage('Vehicle saved successfully.');
-      setVehicle(initialState); // reset form on success
+      if (isEditing && vehicleId) {
+        // Edit mode logic
+        await updateVehicle(vehicleId, {
+          registrationNumber: vehicle.registrationNumber,
+          make: vehicle.make,
+          model: vehicle.model,
+          variant: vehicle.variant || undefined,
+          year: vehicle.year ? Number(vehicle.year) : undefined,
+          mileage: vehicle.odometer ? Number(vehicle.odometer) : undefined,
+          color: vehicle.color || undefined,
+          engineDetails: vehicle.engineType || undefined,
+          fuelType: vehicle.fuelType || undefined,
+          transmission: vehicle.transmission || undefined,
+        });
+        setStatusMessage('Vehicle updated successfully.');
+      } else {
+        // Create mode logic
+        await createVehicle({
+          customerId: vehicle.customerId,
+          registrationNumber: vehicle.registrationNumber,
+          vin: vehicle.vin || undefined,
+          make: vehicle.make,
+          model: vehicle.model,
+          variant: vehicle.variant || undefined,
+          year: vehicle.year ? Number(vehicle.year) : undefined,
+          mileage: vehicle.odometer ? Number(vehicle.odometer) : undefined,
+          color: vehicle.color || undefined,
+          engineDetails: vehicle.engineType || undefined,
+          fuelType: vehicle.fuelType || undefined,
+          transmission: vehicle.transmission || undefined,
+        });
+        setStatusMessage('Vehicle saved successfully.');
+        setVehicle(initialState); // Reset form only on creation
+      }
+      
+      // Trigger callback if provided
+      onSuccess?.();
     } catch (err) {
       setStatusMessage(
         err instanceof Error ? err.message : 'Failed to save vehicle.',
@@ -226,3 +255,4 @@ export function VehicleForm() {
     </Card>
   );
 }
+

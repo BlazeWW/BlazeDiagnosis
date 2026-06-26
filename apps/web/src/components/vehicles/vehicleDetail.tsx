@@ -13,17 +13,20 @@ export function VehicleDetail({ vehicleId }: VehicleDetailProps) {
   const [loading, setLoading] = useState(true);
   const [vehicle, setVehicle] = useState<VehicleDetailRecord | null>(null);
 
-  useEffect(() => {
+    useEffect(() => {
     const loadVehicle = async () => {
       try {
         setError(null);
         setLoading(true);
 
-        const data = await requestJson<{ vehicles: VehicleDetailRecord[] }>(
+        // 1. FIXED: Expect an object with a singular 'vehicle' property
+        const data = await requestJson<{ vehicle: VehicleDetailRecord }>(
           `/api/vehicles/${vehicleId}`,
           { errorMessage: 'Unable to load vehicle.' },
         );
-        setVehicle(data.vehicles[0] ?? null);
+        
+        // 2. FIXED: Assign the singular vehicle object to state
+        setVehicle(data.vehicle);
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : 'Unable to load vehicle.');
       } finally {
