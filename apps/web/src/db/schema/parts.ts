@@ -45,6 +45,32 @@ export const parts = pgTable(
     index('parts_sku_idx').on(table.sku),
   ],
 );
+export const partsFitment = pgTable(
+  'parts_fitment',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    partId: uuid('part_id')
+      .references(() => parts.id, { onDelete: 'cascade' })
+      .notNull(),
+    make: varchar('make', { length: 100 }).notNull(),
+    model: varchar('model', { length: 100 }).notNull(),
+    year: varchar('year', { length: 4 }).notNull(),
+    variant: varchar('variant', { length: 100 }).notNull(),
+    engine: varchar('engine', { length: 100 }).notNull(),
+    fuelType: varchar('fuel_type', { length: 50 }).notNull(),
+    transmission: varchar('transmission', { length: 50 }).notNull(),
+    source: varchar('source', { length: 50 }).default('manual').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+    (table) => [
+    index('fitment_tenant_lookup_idx').on(table.tenantId, table.make, table.model, table.year),
+    index('fitment_part_idx').on(table.partId),
+  ],
+);
 
-// Clean transparent re-exports from your suppliers file
 export { partsRequestItems, partsRequests } from './suppliers';
