@@ -53,3 +53,12 @@ This matrix establishes the strict operational boundaries required across endpoi
 - [ ] Environment secrets, production tokens, and infrastructure certificates are hosted outside source trees.
 - [ ] Vulnerability tooling checks clear during automated deployment compilation events.
 - [ ] Immutable audit microservices capture all invoice operations, approval updates, and role modifications.
+
+### Security Findings Log
+
+| Risk Category | Identified Vulnerability | Practical Mitigation Strategy |
+| :--- | :--- | :--- |
+| *Access Control* | Broken Function Level Authorization (BFLA) on admin/staff routes. | Deploy role-checking middleware on all backend route definitions. |
+| *Data Leakage* | Raw database objects exposing internal notes/margins to customers. | Enforce strict Data Transfer Objects (DTOs) to whitelist public fields. |
+| *Tenant Isolation* | Potential cross-tenant data spill via un-scoped API queries. | Automate query scoping filters (WHERE tenant_id = current_tenant) at the repository layer. |
+| *File Security* | Arbitrary file upload execution vectors. | Validate magic numbers, rename files to UUIDs, and host out-of-webroot. |
