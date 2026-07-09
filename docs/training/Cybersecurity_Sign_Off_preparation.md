@@ -62,3 +62,14 @@ This matrix establishes the strict operational boundaries required across endpoi
 | *Data Leakage* | Raw database objects exposing internal notes/margins to customers. | Enforce strict Data Transfer Objects (DTOs) to whitelist public fields. |
 | *Tenant Isolation* | Potential cross-tenant data spill via un-scoped API queries. | Automate query scoping filters (WHERE tenant_id = current_tenant) at the repository layer. |
 | *File Security* | Arbitrary file upload execution vectors. | Validate magic numbers, rename files to UUIDs, and host out-of-webroot. |
+
+### Deliverable 2: Threat Model (STRIDE Framework)
+
+| STRIDE Threat | Architectural Vulnerability | Specific System Impact | Practical Mitigation Strategy |
+| :--- | :--- | :--- | :--- |
+| **Spoofing** | Forged JWT signatures or compromised API keys. | Adversary impersonates a tenant manager, gaining malicious system entry. | Enforce strong asymmetric token signing algorithms and rotate signing keys regularly. |
+| **Tampering** | Intercepting and manipulating invoice or quote parameter amounts in transit. | Unauthorized price adjustments or financial fraud. | Enforce TLS 1.3 across all platform connections; sign all critical state changes with localized server validation. |
+| **Repudiation** | Missing trails or mutable app database history files. | Inability to track who approved a quote or altered an invoice during an audit. | Ship application events to an immutable, write-once-read-many (WORM) logging server or external SIEM platform. |
+| **Information Disclosure** | Data spill via improper multi-tenant boundary checks. | Tenant A views financial records, PII, or vehicle data belonging to Tenant B. | Enforce row-level security (RLS) policies within the database engines based on session tenant metrics. |
+| **Denial of Service** | Uncapped bulk file downloads or unbound resource query endpoints. | Exhausting system memory or database connection pools, crashing the service. | Implement aggressive rate-limiting layers (e.g., token bucket via Redis) mapped to distinct user and IP contexts. |
+| **Elevation of Privilege** | Manipulating the user profile update payload (`role: 'Admin'`). | A regular client escalates privileges to achieve full host database control. | Restrict dynamic updates; explicitly isolate role configuration paths behind strict administrative-only routes. |
