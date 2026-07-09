@@ -25,3 +25,31 @@ This matrix establishes the strict operational boundaries required across endpoi
 #### C. Platform Pages Risk Assessment
 * *Tenant Data Exposure Risk:* Multi-tenant leakage at the analytical dashboard level. Failure to separate system environments could lead to data spill, violating compliance regulations.
 * *Mitigation:* Implement strict Row-Level Security (RLS) or logical data layer filters. Abstract data access behind a repository class that implicitly appends the user's tenant scope identifier to every query, bypassing human developer error.
+
+### Tenant Isolation QA Testing Criteria
+
+- [ ] **Verify Authentication Token Scoping:** Ensure that a valid JWT generated for Tenant A is explicitly rejected with an HTTP `403 Forbidden` if executed against an endpoint scope for Tenant B.
+- [ ] **Validate IDOR Resiliency:** Attempt direct URL parameter manipulation by executing requests against known resource keys across tenant boundaries. Ensure the application responds with a uniform error layout to prevent active resource discovery.
+- [ ] **Confirm Database Leakage Defenses:** Execute a multi-tenant performance/stress test script simulating parallel writes. Review storage indexes to verify that no overlapping race conditions blend entity relations between discrete tenants.
+- [ ] **Analyze Cache Key Segregation:** Verify that globally pooled caching components (e.g., Redis clusters) utilize distinct tenant-prefixed keys (e.g., `tenant_id:resource_id`) to block cross-organizational data delivery out of shared RAM.
+##  Production Security Sign-Off Checklist
+
+### 1. Access Control & Authorization (RBAC / ABAC)
+- [ ] All critical endpoints (`/invoices`, `/customers`, `/vehicles`) validate session permissions server-side.
+- [ ] Negative test cases demonstrating explicit `403 Forbidden` behavior for unauthorized roles pass successfully.
+- [ ] Public routes containing resource identifiers utilize non-enumerable tokens (UUIDv4).
+
+### 2. Multi-Tenant Cryptographic & Logical Isolation
+- [ ] Database query boundaries append deterministic tenant scoping constraints.
+- [ ] Cross-tenant API communication simulation yields 100% rejection metrics.
+- [ ] Shared caching, background processing worker pools, and memory models use explicit namespace keys.
+
+### 3. Data Leakage & Masking Compliance
+- [ ] Supplier-facing endpoints are validated to filter out corporate client PII.
+- [ ] Quote structures systematically strip out internal metadata fields (`supplier_margin`, `internal_notes`).
+- [ ] Production logs run via automated data sanitization scripts to catch and obscure plaintext secrets.
+
+### 4. Continuous Observability & Supply Chain Compliance
+- [ ] Environment secrets, production tokens, and infrastructure certificates are hosted outside source trees.
+- [ ] Vulnerability tooling checks clear during automated deployment compilation events.
+- [ ] Immutable audit microservices capture all invoice operations, approval updates, and role modifications.
