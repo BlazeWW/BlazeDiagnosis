@@ -4,6 +4,8 @@ This folder now separates **active production documentation** from **completed h
 
 ## Active documentation
 
+- `active/18-test-baseline-and-quality-plan.md` - Test baseline, commands, route/service coverage, and intern testing rules.
+
 Use these documents for all development from this point onward:
 
 - `active/00-production-readiness-roadmap.md` - roadmap from MVP to production-ready SaaS.

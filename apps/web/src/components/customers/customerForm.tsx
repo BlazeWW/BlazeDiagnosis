@@ -63,19 +63,26 @@ export function CustomerForm({
     setStatusMessage(null);
 
     try {
+      const notes = [
+        customer.companyName ? `Company: ${customer.companyName}` : undefined,
+        customer.taxNumber ? `Tax number: ${customer.taxNumber}` : undefined,
+        customer.preferredCommunicationChannel
+          ? `Preferred contact: ${customer.preferredCommunicationChannel}`
+          : undefined,
+        customer.alternateNumber ? `Alternate number: ${customer.alternateNumber}` : undefined,
+        customer.address ? `Address: ${customer.address}` : undefined,
+      ]
+        .filter(Boolean)
+        .join('\n');
+
       if (isEditing && customerId) {
         await updateCustomer(customerId, {
           firstName: customer.firstName,
           lastName: customer.lastName,
           email: customer.email,
-          mobileNumber: customer.mobileNumber,
-          alternateNumber: customer.alternateNumber || undefined,
-          companyName: customer.companyName || undefined,
-          taxNumber: customer.taxNumber || undefined,
-          address: customer.address || undefined,
-          preferredCommunicationChannel:
-            customer.preferredCommunicationChannel || undefined,
-          marketingConsent: customer.marketingConsent,
+          phone: customer.mobileNumber,
+          notes: notes || undefined,
+          preferredLocale: 'en',
         });
         setStatusMessage('Customer updated successfully.');
       } else {
@@ -83,14 +90,9 @@ export function CustomerForm({
           firstName: customer.firstName,
           lastName: customer.lastName,
           email: customer.email,
-          mobileNumber: customer.mobileNumber,
-          alternateNumber: customer.alternateNumber || undefined,
-          companyName: customer.companyName || undefined,
-          taxNumber: customer.taxNumber || undefined,
-          address: customer.address || undefined,
-          preferredCommunicationChannel:
-            customer.preferredCommunicationChannel || undefined,
-          marketingConsent: customer.marketingConsent,
+          phone: customer.mobileNumber,
+          notes: notes || undefined,
+          preferredLocale: 'en',
         });
         setStatusMessage('Customer saved successfully.');
         setCustomer(initialState);

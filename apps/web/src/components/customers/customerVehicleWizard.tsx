@@ -8,6 +8,7 @@ import { FormActions, FormField } from '@/components/forms';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { createCustomerVehicleIntake } from '@/lib/apiClient';
 import type {
   CustomerVehicleIntake,
   CustomerWizardCustomer,
@@ -63,6 +64,7 @@ export function CustomerVehicleWizard() {
   const [customer, setCustomer] = useState<CustomerWizardCustomer>(customerInitialState);
   const [vehicle, setVehicle] = useState<CustomerWizardVehicle>(vehicleInitialState);
   const [savedIntake, setSavedIntake] = useState<CustomerVehicleIntake | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const activeStep = steps[stepIndex];
 
@@ -98,6 +100,7 @@ export function CustomerVehicleWizard() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSubmitting(true);
+    setStatusMessage(null);
 
     const intake: CustomerVehicleIntake = {
       createdAt: new Date().toISOString(),
@@ -108,21 +111,11 @@ export function CustomerVehicleWizard() {
     };
 
     try {
-      const response = await fetch('/api/customer-intakes', {
-        body: JSON.stringify({ customer, vehicle }),
-        headers: { 'content-type': 'application/json' },
-        method: 'POST',
-      });
-
-      if (!response.ok) {
-        throw new Error('The tenant API is not available yet.');
-      }
-
+      await createCustomerVehicleIntake({ customer, vehicle });
       setSavedIntake({ ...intake, status: 'ready_for_review' });
-    } catch {
-      const existing = getQueuedIntakes();
-      window.localStorage.setItem('blaze-customer-vehicle-intakes', JSON.stringify([intake, ...existing]));
-      setSavedIntake(intake);
+      setStatusMessage('Customer and vehicle intake created successfully.');
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : 'Failed to create customer and vehicle intake.');
     } finally {
       setIsSubmitting(false);
     }
@@ -404,11 +397,11 @@ function ReviewStep({
       />
       {savedIntake ? (
         <p className="rounded-xl border border-success/30 bg-success/10 p-4 text-sm text-success lg:col-span-2">
-          Intake {savedIntake.id} was created. If the authenticated API is unavailable, it is queued locally until production auth is connected.
+          Intake {savedIntake.id} was created successfully.
         </p>
       ) : (
         <p className="rounded-xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground lg:col-span-2">
-          Submit to create a local intake record. This keeps the wizard functional during MVP UI work without bypassing tenant-aware server authorization.
+          Submit to create the customer and vehicle records through the tenant API.
         </p>
       )}
     </div>
@@ -431,11 +424,3 @@ function ReviewCard({ rows, title }: { rows: [string, string][]; title: string }
   );
 }
 
-function getQueuedIntakes(): CustomerVehicleIntake[] {
-  try {
-    const stored = window.localStorage.getItem('blaze-customer-vehicle-intakes');
-    return stored ? (JSON.parse(stored) as CustomerVehicleIntake[]) : [];
-  } catch {
-    return [];
-  }
-}

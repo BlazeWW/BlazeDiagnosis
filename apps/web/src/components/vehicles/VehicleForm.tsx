@@ -75,7 +75,7 @@ export function VehicleForm({ vehicleId, initialData, onSuccess }: VehicleFormPr
       } else {
         // Create mode logic
         await createVehicle({
-          customerId: vehicle.customerId,
+          primaryCustomerId: vehicle.customerId,
           registrationNumber: vehicle.registrationNumber,
           vin: vehicle.vin || undefined,
           make: vehicle.make,

@@ -1,77 +1,65 @@
-// apps/web/src/app/api/quotes/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { createQuoteFromJobCard, addQuoteLineItem } from "@/features/quotes";
-import { requireTenantContext } from "@/lib/auth/auth-guards";
+import { z } from 'zod';
 
-export async function POST(request: NextRequest) {
-  try {
-    const { tenantId } = await requireTenantContext();
-    console.log("Tenant ID from context:", tenantId);
-    
-    if (!tenantId) {
-      throw new Error("Tenant ID is required but was not provided");
-    }
-    
-    const body = await request.json();
-    console.log("Request body:", body);
-    
-    // Validate required fields
-    if (!body.jobCardId) {
-      throw new Error("Job Card ID is required");
-    }
-    if (!body.customerId) {
-      throw new Error("Customer ID is required");
-    }
-    
-    // Create the quote
-const quote = await createQuoteFromJobCard(
-  tenantId,
-  body.jobCardId,
-  body.customerId
-);
+import {
+  addQuoteLineItem,
+  createQuoteFromJobCard,
+  getQuotes,
+} from '@/features/quotes';
+import { apiCreated, apiOk, handleApiError } from '@/lib/api/response';
+import { requireTenantContext } from '@/lib/tenancy/tenantContext';
 
-console.log("Quote created:", quote);
+const routeName = '/api/quotes';
 
-// Add line items if they exist
-if (body.lineItems && body.lineItems.length > 0) {
-  console.log("Adding line items:", body.lineItems);
-  for (const item of body.lineItems) {
-    if (item.description && item.quantity > 0 && item.unitPrice > 0) {
-      // Type assertion - we know quote has an id property
-      const quoteObj = quote as { id: string };
-      await addQuoteLineItem(
-        tenantId, 
-        quoteObj.id,
-        body.jobCardId,
-        {
-          description: item.description,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          type: item.type || 'part',
-        }
-      );
-    }
-  }
-}
-    
-    return NextResponse.json({ quote }, { status: 201 });
-  } catch (error) {
-    console.error("Failed to create quote:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to create quote" },
-      { status: 500 }
-    );
-  }
-}
+const createQuoteLineItemSchema = z.object({
+  description: z.string().min(1, 'Line item description is required.'),
+  quantity: z.number().positive('Quantity must be greater than zero.'),
+  type: z
+    .enum(['part', 'labor', 'diagnostic', 'consumable', 'optional_service'])
+    .default('part'),
+  unitPrice: z.number().nonnegative('Unit price cannot be negative.'),
+});
+
+const createQuoteSchema = z.object({
+  customerId: z.string().min(1, 'Customer ID is required.'),
+  jobCardId: z.string().min(1, 'Job card ID is required.'),
+  lineItems: z.array(createQuoteLineItemSchema).default([]),
+});
 
 export async function GET() {
   try {
-    // TODO: Implement fetching quotes for tenant
-    return NextResponse.json({ quotes: [] });
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to fetch quotes" },
-      { status: 500 }
+    const tenant = await requireTenantContext();
+    const quotes = await getQuotes(tenant.tenantId);
+
+    return apiOk({ quotes }, { meta: { count: quotes.length } });
+  } catch (error) {
+    return handleApiError(`GET ${routeName}`, error);
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const tenant = await requireTenantContext();
+    const input = createQuoteSchema.parse(await request.json());
+    const quote = await createQuoteFromJobCard(
+      tenant.tenantId,
+      input.jobCardId,
+      input.customerId,
     );
+    const quoteId = (quote as { id: string }).id;
+
+    const lineItems = [];
+    for (const item of input.lineItems) {
+      const lineItem = await addQuoteLineItem(
+        tenant.tenantId,
+        quoteId,
+        input.jobCardId,
+        item,
+      );
+      lineItems.push(lineItem);
+    }
+
+    return apiCreated({ lineItems, quote });
+  } catch (error) {
+    return handleApiError(`POST ${routeName}`, error);
   }
 }

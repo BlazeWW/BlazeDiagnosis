@@ -9,7 +9,8 @@
     "format": "pnpm --filter @blaze-diagnostics/web format",
     "typecheck": "pnpm --filter @blaze-diagnostics/web typecheck",
     "typegen": "pnpm --filter @blaze-diagnostics/web typegen",
-    "test:web": "pnpm --filter @blaze-diagnostics/web exec vitest run"
+    "test:web": "pnpm --filter @blaze-diagnostics/web test",
+    "test": "pnpm --filter @blaze-diagnostics/web test"
   },
   "devDependencies": {
     "prettier": "latest",

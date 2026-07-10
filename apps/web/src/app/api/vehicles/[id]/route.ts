@@ -1,9 +1,10 @@
+import { createVehicleSchema } from '@/features/vehicles/schemas/vehicleSchema';
 import {
   deleteVehicle,
-  //listVehiclesForCustomer,
-  getVehicleById
+  getVehicleById,
+  updateVehicle,
 } from '@/features/vehicles/services/vehicleService';
-import { apiOk, handleApiError, apiError } from '@/lib/api/response';
+import { apiError, apiOk, handleApiError } from '@/lib/api/response';
 import { requireTenantContext } from '@/lib/tenancy/tenantContext';
 import type { ApiRouteContext } from '@/types/api';
 
@@ -15,13 +16,26 @@ export async function GET(_request: Request, { params }: ApiRouteContext) {
     const tenant = await requireTenantContext();
     const vehicle = await getVehicleById(tenant.tenantId, id);
 
-    if (!vehicle){
+    if (!vehicle) {
       return apiError('NOT_FOUND', 'Vehicle not found.', 404, { id });
     }
 
     return apiOk({ vehicle });
   } catch (error) {
     return handleApiError(`GET ${routeName}`, error);
+  }
+}
+
+export async function PATCH(request: Request, { params }: ApiRouteContext) {
+  try {
+    const { id } = await params;
+    const tenant = await requireTenantContext();
+    const input = createVehicleSchema.partial().parse(await request.json());
+    const vehicle = await updateVehicle(tenant.tenantId, id, input);
+
+    return apiOk({ vehicle });
+  } catch (error) {
+    return handleApiError(`PATCH ${routeName}`, error);
   }
 }
 

@@ -1,2 +1,2 @@
-export * from './partsCatalog';
-export * from './suppliersPanel';
+export * from './PartsCatalog';
+export * from './SuppliersPanel';

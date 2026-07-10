@@ -124,3 +124,13 @@ Every tenant-owned operation must include a server-side tenant authorization che
 ## Development rule
 
 Do not build new production features on demo-only or localStorage-only workflows. New work should use database-backed services, typed API contracts, tenant-aware authorization, and production documentation updates.
+
+## Testing
+
+Run the web test baseline from the repo root:
+
+```bash
+pnpm test
+```
+
+The first production-readiness test baseline is documented in `docs/active/18-test-baseline-and-quality-plan.md`. New features must include schema, service, API, and negative-path tests before being considered ready for review.

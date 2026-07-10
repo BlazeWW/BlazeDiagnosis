@@ -10,7 +10,7 @@ import {
 } from '@/lib/api/response';
 import { requireTenantContext } from '@/lib/tenancy/tenantContext';
 
-const routeName = '/api/parts';
+const routeName = '/api/parts-requests';
 
 export async function GET() {
   try {
