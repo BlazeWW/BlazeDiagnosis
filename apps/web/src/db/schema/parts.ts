@@ -73,4 +73,4 @@ export const partsFitment = pgTable(
   ],
 );
 
-export { partsRequestItems, partsRequests } from './suppliers';
+export { partsRequestItems, partsRequests, deliveryStatuses } from './suppliers';

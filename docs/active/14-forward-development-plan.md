@@ -58,8 +58,8 @@ Owner groups: Software Engineering 1, Software Development 1, Software Developme
 - [ ] Quote builder persists drafts, revisions, and sent quotes.
 - [ ] Customer quote approval persists item-level decisions.
 - [ ] Invoice generation uses approved quote items.
-- [ ] Parts request and supplier response workflows persist to database.
-- [ ] Delivery status updates persist and appear on station/supplier/customer surfaces.
+- [X] Parts request and supplier response workflows persist to database.
+- [X] Delivery status updates persist and appear on station/supplier/customer surfaces.
 
 ### Gate 5: Market-ready UX
 

@@ -198,3 +198,32 @@ export const partsDeliveries = pgTable('parts_deliveries', {
     .defaultNow()
     .notNull(),
 });
+
+export const deliveryStatuses = pgTable(
+  'delivery_statuses',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    partsRequestId: uuid('parts_request_id')
+      .references(() => partsRequests.id, { onDelete: 'cascade' })
+      .notNull(),
+    supplierResponseId: uuid('supplier_response_id')
+      .references(() => supplierResponses.id, { onDelete: 'cascade' })
+      .notNull(),
+  
+    currentSurfaceStatus: varchar('current_surface_status', { length: 100 }).notNull(), 
+    notes: text('notes'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index('delivery_tenant_surface_idx').on(table.tenantId, table.currentSurfaceStatus),
+    index('delivery_request_idx').on(table.partsRequestId),
+  ]
+);
