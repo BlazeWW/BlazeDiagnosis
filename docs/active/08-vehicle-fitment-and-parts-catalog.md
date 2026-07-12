@@ -35,13 +35,13 @@ The user flow should be:
 
 ## Required dropdown hierarchy
 
-- [x] Make
-- [x] Model
-- [x] Year
-- [x] Variant/trim
-- [x] Engine
-- [x] Fuel type
-- [x] Transmission where relevant
+- [ ] Make
+- [ ] Model
+- [ ] Year
+- [ ] Variant/trim
+- [ ] Engine
+- [ ] Fuel type
+- [ ] Transmission where relevant
 
 ## Data model checklist
 

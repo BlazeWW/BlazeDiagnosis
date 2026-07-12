@@ -38,9 +38,6 @@ export interface ICreateSupplierResponsePayload {
   notes?: string;
 }
 
-// ========================================================
-// EXISTING METHODS
-// ========================================================
 
 async function getTenant() {
   return await requireTenantContext();
@@ -96,10 +93,6 @@ export async function createPartsRequestDraft(input: ICreatePartsRequestPayload)
   });
 }
 
-// ========================================================
-// NEW GATE 4 IMPLEMENTATIONS (Persistence & Surfaces)
-// ========================================================
-
 export async function createSupplierResponse(data: ICreateSupplierResponsePayload) {
   const tenant = await getTenant();
   
@@ -138,10 +131,6 @@ export async function updateSurfaceDeliveryStatus(
 
   return deliveryLog;
 }
-
-// ========================================================
-// SERVER ACTIONS
-// ========================================================
 
 async function handleAction(action: () => Promise<any>, path: string) {
   try {
