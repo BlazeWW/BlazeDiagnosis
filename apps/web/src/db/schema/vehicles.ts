@@ -43,6 +43,7 @@ export const vehicles = pgTable(
     isArchived: boolean('is_archived').default(false).notNull(),
   },
   (table) => [
+    index('vehicles_tenant_id_idx').on(table.tenantId, table.id, table.isArchived),
     index('vehicles_tenant_customer_idx').on(
       table.tenantId,
       table.primaryCustomerId,

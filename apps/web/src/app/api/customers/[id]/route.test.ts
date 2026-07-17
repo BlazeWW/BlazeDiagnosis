@@ -53,6 +53,23 @@ describe('/api/customers/[id]', () => {
     });
   });
 
+  it('returns forbidden when tenant scope is violated', async () => {
+    customerServiceMock.getCustomerById.mockRejectedValue(
+      new Error('Cross-tenant access denied or missing permission.'),
+    );
+
+    const response = await GET(
+      new Request('http://localhost/api/customers/customer-1'),
+      routeContext({ id: 'customer-1' }),
+    );
+
+    expect(response.status).toBe(403);
+    await expect(readJson(response)).resolves.toMatchObject({
+      error: { code: 'FORBIDDEN' },
+      success: false,
+    });
+  });
+
   it('updates a customer', async () => {
     customerServiceMock.updateCustomer.mockResolvedValue({ firstName: 'Updated', id: 'customer-1' });
 
@@ -62,9 +79,11 @@ describe('/api/customers/[id]', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(customerServiceMock.updateCustomer).toHaveBeenCalledWith('tenant-1', 'customer-1', {
-      firstName: 'Updated',
-    });
+    expect(customerServiceMock.updateCustomer).toHaveBeenCalledWith(
+      'tenant-1',
+      'customer-1',
+      expect.objectContaining({ firstName: 'Updated' }),
+    );
   });
 
   it('archives a customer', async () => {

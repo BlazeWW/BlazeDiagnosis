@@ -36,6 +36,7 @@ export const customers = pgTable(
     isArchived: boolean('is_archived').default(false).notNull(),
   },
   (table) => [
+    index('customers_tenant_id_idx').on(table.tenantId, table.id),
     index('customers_tenant_email_idx').on(table.tenantId, table.email),
   ],
 );
