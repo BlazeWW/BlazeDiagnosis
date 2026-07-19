@@ -32,16 +32,16 @@ Primary focus: SaaS architecture, tenant isolation, auth, permissions, and integ
 
 ### Tasks
 
-- [ ] Replace mock auth/session layer with selected production auth implementation.
-- [ ] Implement tenant memberships and role checks.
-- [ ] Build central `requireTenantPermission` usage audit.
-- [ ] Standardize API error handling.
-- [ ] Build vehicle lookup provider abstraction.
-- [ ] Build parts fitment provider abstraction.
-- [ ] Add provider stubs for manual catalog and future South African lookup APIs.
-- [ ] Review database indexes.
-- [ ] Prepare migration reset plan.
-- [ ] Add integration tests for cross-tenant access prevention.
+- [x] Replace mock auth/session layer with selected production auth implementation.
+- [x] Implement tenant memberships and role checks.
+- [x] Build central `requireTenantPermission` usage audit.
+- [x] Standardize API error handling.
+- [x] Build vehicle lookup provider abstraction.
+- [x] Build parts fitment provider abstraction.
+- [x] Add provider stubs for manual catalog and future South African lookup APIs.
+- [x] Review database indexes.
+- [x] Prepare migration reset plan.
+- [x] Add integration tests for cross-tenant access prevention.
 
 ### Deliverables
 

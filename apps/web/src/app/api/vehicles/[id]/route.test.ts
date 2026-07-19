@@ -49,6 +49,23 @@ describe('/api/vehicles/[id]', () => {
     });
   });
 
+  it('returns forbidden when tenant scope is violated', async () => {
+    vehicleServiceMock.getVehicleById.mockRejectedValue(
+      new Error('Cross-tenant access denied or missing permission.'),
+    );
+
+    const response = await GET(
+      new Request('http://localhost/api/vehicles/vehicle-1'),
+      routeContext({ id: 'vehicle-1' }),
+    );
+
+    expect(response.status).toBe(403);
+    await expect(readJson(response)).resolves.toMatchObject({
+      error: { code: 'FORBIDDEN' },
+      success: false,
+    });
+  });
+
   it('updates a vehicle', async () => {
     vehicleServiceMock.updateVehicle.mockResolvedValue({ id: 'vehicle-1', make: 'Ford' });
 

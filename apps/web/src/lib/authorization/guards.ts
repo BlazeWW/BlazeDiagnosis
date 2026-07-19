@@ -3,6 +3,13 @@ import type { Permission } from '@/lib/constants/roles';
 import { requireUser } from '../auth/session';
 import { auditTenantPermissionCheck } from '@/lib/auth/audit';
 
+export class TenantAccessError extends Error {
+  constructor(message = 'Cross-tenant access denied or missing permission.') {
+    super(message);
+    this.name = 'TenantAccessError';
+  }
+}
+
 export async function requirePermission(permission: Permission) {
   const user = await requireUser();
 
@@ -54,7 +61,7 @@ export async function requireTenantPermission(
         : 'tenant_scope_mismatch',
     });
 
-    throw new Error('Cross-tenant access denied or missing permission.');
+    throw new TenantAccessError('Cross-tenant access denied or missing permission.');
   }
 
   await auditTenantPermissionCheck({

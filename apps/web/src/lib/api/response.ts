@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 
+import { TenantAccessError } from '@/lib/authorization/guards';
 import type { ApiErrorCode, ApiErrorResponse } from '@/types/api';
 
 export function apiOk<TData, TMeta = undefined>(
@@ -48,11 +49,33 @@ export function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Internal Server Error';
 }
 
+export function isTenantAccessError(error: unknown) {
+  if (error instanceof TenantAccessError) {
+    return true;
+  }
+
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    return (
+      message.includes('cross-tenant access denied') ||
+      message.includes('tenant_scope_mismatch')
+    );
+  }
+
+  return false;
+}
+
 export function handleApiError(route: string, error: unknown) {
   console.error(`${route} failed:`, error);
 
   if (error instanceof ZodError) {
     return apiValidationError(error);
+  }
+
+  if (isTenantAccessError(error)) {
+    return apiError('FORBIDDEN', 'Forbidden.', 403, {
+      reason: 'tenant_scope_mismatch',
+    });
   }
 
   return apiError('INTERNAL_SERVER_ERROR', getErrorMessage(error), 500);

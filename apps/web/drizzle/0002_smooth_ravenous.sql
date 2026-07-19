@@ -1,0 +1,2 @@
+CREATE INDEX IF NOT EXISTS "customers_tenant_id_idx" ON "customers" ("tenant_id", "id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "vehicles_tenant_id_idx" ON "vehicles" ("tenant_id", "id", "is_archived");
