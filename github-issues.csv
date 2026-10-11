@@ -1,0 +1,71 @@
+id,team,area,level,title,scope,priority
+BD-001,Team 1: Architecture and Identity,Core Architecture,Y1,Route and feature inventory,Inventory active routes and architecture; reconcile contradictory readiness claims.,P1
+BD-002,Team 1: Architecture and Identity,Core Architecture,Y2,Production authentication validation,"Verify real sessions, logout, expiry, provider configuration and deployment secrets.",P0
+BD-003,Team 1: Architecture and Identity,Core Architecture,Y2,Tenant authorization guards,Enforce server-side tenant membership and denial tests on protected resources.,P0
+BD-004,Team 1: Architecture and Identity,Core Architecture,Y2,Role permission matrix,"Specify and test permissions for customer, station, supplier and platform roles.",P0
+BD-005,Team 1: Architecture and Identity,Core Architecture,Y2,Drizzle schema and migration audit,"Audit Drizzle schema, migration integrity, keys, indexes and cross-tenant constraints.",P0
+BD-006,Team 1: Architecture and Identity,Core Architecture,Y1,API response and Zod consistency,Normalize validation and API envelopes without changing external contracts.,P1
+BD-007,Team 1: Architecture and Identity,Core Architecture,Y1,Reusable typed contracts and fixtures,Publish typed DTO fixtures and mock adapters for isolated work.,P1
+BD-008,Team 2: Workshop and Vehicles,Workshop,Y2,Station dashboard metrics,Implement tenant-scoped live dashboard data.,P1
+BD-009,Team 2: Workshop and Vehicles,Workshop,Y1,Customer registration wizard UX,"Refine steps, validation and duplicate warnings.",P1
+BD-010,Team 2: Workshop and Vehicles,Workshop,Y2,Customer profile persistence,Implement authorized detail and editing service.,P1
+BD-011,Team 2: Workshop and Vehicles,Workshop,Y1,Vehicle registration wizard,"Add make/model/year flow, VIN checks and manual fallback.",P1
+BD-012,Team 2: Workshop and Vehicles,Workshop,Y2,Vehicle service history,Connect authorized vehicle history and relevant records.,P1
+BD-013,Team 2: Workshop and Vehicles,Workshop,Y1,Customer and vehicle search,"Implement sorting, filters and paginated responsive results.",P1
+BD-014,Team 2: Workshop and Vehicles,Workshop,Y2,Workshop staffing interface,Provide secure staff assignment and workload selection.,P1
+BD-015,Team 3: Diagnostics and Job Cards,Diagnostics,Y2,Job card persistence,Build tenant-scoped creation and retrieval.,P0
+BD-016,Team 3: Diagnostics and Job Cards,Diagnostics,Y2,Job lifecycle status model,Enforce valid state transitions with audit events.,P0
+BD-017,Team 3: Diagnostics and Job Cards,Diagnostics,Y1,Digital inspection checklist,Deliver configurable inspection inputs and tested component.,P1
+BD-018,Team 3: Diagnostics and Job Cards,Diagnostics,Y1,Defect severity classification,Implement clear normal/advisory/critical presentation.,P1
+BD-019,Team 3: Diagnostics and Job Cards,Diagnostics,Y2,Diagnostic evidence attachments,Support authorized private file upload and download.,P1
+BD-020,Team 3: Diagnostics and Job Cards,Diagnostics,Y2,Labour tracking and technician notes,Record durations and role-protected notes.,P1
+BD-021,Team 3: Diagnostics and Job Cards,Diagnostics,Y1,Customer inspection report,Produce legible customer-safe before/after report.,P1
+BD-022,Team 4: Quotes and Invoices,Finance,Y2,Quote draft persistence,Implement quote builder persistence and status transitions.,P0
+BD-023,Team 4: Quotes and Invoices,Finance,Y2,Quote revisions,Preserve immutable sent versions and revision history.,P0
+BD-024,Team 4: Quotes and Invoices,Finance,Y1,Mobile item-level approvals,Deliver tested customer approval UX with mock adapter.,P0
+BD-025,Team 4: Quotes and Invoices,Finance,Y2,Tax pricing and rounding tests,Verify decimals VAT discounts and totals.,P0
+BD-026,Team 4: Quotes and Invoices,Finance,Y1,Branded quote PDF,Generate deterministic branded quote documents.,P1
+BD-027,Team 4: Quotes and Invoices,Finance,Y2,Invoice issuance and numbering,Implement transactional unique tenant-scoped numbering.,P0
+BD-028,Team 4: Quotes and Invoices,Finance,Y2,Payment events and invoice states,"Implement manual payments, balances and corrections.",P1
+BD-029,Team 5: Parts and Suppliers,Parts,Y1,Parts catalogue search,Deliver typed reusable parts search and filters.,P1
+BD-030,Team 5: Parts and Suppliers,Parts,Y2,Vehicle fitment logic,"Add confidence levels, filtering and logged manual override.",P1
+BD-031,Team 5: Parts and Suppliers,Parts,Y2,Parts request persistence,Save and authorize supplier parts requests.,P0
+BD-032,Team 5: Parts and Suppliers,Parts,Y1,Supplier quote response UI,"Create price, ETA and alternate-parts form.",P1
+BD-033,Team 5: Parts and Suppliers,Parts,Y2,Supplier offer comparison,Normalize supplier offers for comparison.,P1
+BD-034,Team 5: Parts and Suppliers,Parts,Y2,Purchase order lifecycle,Implement order changes and audit history.,P1
+BD-035,Team 5: Parts and Suppliers,Parts,Y1,Delivery and receipt tracking,Build delivery milestones and confirmation workflow.,P1
+BD-036,Team 6: Customer Communications,Customer,Y1,Customer dashboard,"Show relevant vehicle, quote and invoice summaries.",P1
+BD-037,Team 6: Customer Communications,Customer,Y2,Customer service history,Display authorized historic jobs and documents.,P1
+BD-038,Team 6: Customer Communications,Customer,Y1,Repair progress timeline,Implement accessible status timeline.,P1
+BD-039,Team 6: Customer Communications,Customer,Y2,Persistent messaging threads,Create private messages and unread state.,P1
+BD-040,Team 6: Customer Communications,Customer,Y1,Notification preferences,Build user notification choice component.,P1
+BD-041,Team 6: Customer Communications,Customer,Y2,Email notification adapter,"Implement tested templates, retries and delivery logs.",P1
+BD-042,Team 6: Customer Communications,Customer,Y1,Customer document centre,Show permitted reports quotes and invoice downloads.,P1
+BD-043,Team 7: SaaS Platform,Platform,Y2,Tenant management,Implement guarded tenant lifecycle operations.,P0
+BD-044,Team 7: SaaS Platform,Platform,Y1,Tenant onboarding,Implement guided setup progress experience.,P1
+BD-045,Team 7: SaaS Platform,Platform,Y2,Subscriptions and entitlements,Persist and enforce plan limits.,P1
+BD-046,Team 7: SaaS Platform,Platform,Y2,Tenant feature flag administration,Persist auditable flags with safe defaults.,P1
+BD-047,Team 7: SaaS Platform,Platform,Y1,Workshop branding,Add brand settings and reliable preview.,P1
+BD-048,Team 7: SaaS Platform,Platform,Y2,Usage analytics,Implement tenant-safe aggregated usage reports.,P1
+BD-049,Team 7: SaaS Platform,Platform,Y1,Audit log browser,Create restricted filters and event display.,P1
+BD-050,Team 8: UX and Accessibility,Design,Y1,Design tokens audit,"Consolidate accessible typography, spacing and colour tokens.",P1
+BD-051,Team 8: UX and Accessibility,Design,Y1,Responsive app navigation,Polish portal shells for small medium and large displays.,P1
+BD-052,Team 8: UX and Accessibility,Design,Y1,Forms and validation patterns,"Unify errors, focus and help text.",P1
+BD-053,Team 8: UX and Accessibility,Design,Y1,Loading empty and error components,Build tested reusable state components.,P1
+BD-054,Team 8: UX and Accessibility,Design,Y1,Light and dark themes,Validate themes and contrast across portal components.,P1
+BD-055,Team 8: UX and Accessibility,Design,Y2,WCAG 2.2 AA remediation,Perform accessibility tests and fix critical issues.,P1
+BD-056,Team 8: UX and Accessibility,Design,Y1,Contextual help and onboarding,Build in-product hints and first-run walkthroughs.,P1
+BD-057,Team 9: Cybersecurity Assurance,Security,Y2,Application threat model,"Model assets, threat boundaries and mitigations.",P0
+BD-058,Team 9: Cybersecurity Assurance,Security,Y2,Cross-tenant negative tests,Add authorization tests using independent tenant fixtures.,P0
+BD-059,Team 9: Cybersecurity Assurance,Security,Y2,Session security suite,Test authentication expiration and relevant CSRF mitigations.,P0
+BD-060,Team 9: Cybersecurity Assurance,Security,Y2,API authorization and validation audit,Inspect IDOR/BOLA and reject unauthorized queries.,P0
+BD-061,Team 9: Cybersecurity Assurance,Security,Y1,Dependency and secrets audit,"Run and triage dependency, token and secrets scans.",P1
+BD-062,Team 9: Cybersecurity Assurance,Security,Y2,Private uploads and data exposure,Test files and customer vs internal data segregation.,P0
+BD-063,Team 9: Cybersecurity Assurance,Security,Y1,Privacy and retention assessment,"Document POPIA-related retention, access and deletion controls.",P1
+BD-064,Team 10: Cloud Architecture and Release,Cloud,Y2,Continuous integration quality gates,Add mandatory clean install lint typecheck unit and build checks.,P0
+BD-065,Team 10: Cloud Architecture and Release,Cloud,Y1,Local PostgreSQL reproducibility,Supply pinned versions and disposable DB setup.,P1
+BD-066,Team 10: Cloud Architecture and Release,Cloud,Y2,Browser end-to-end tests,Add representative journeys for each portal.,P0
+BD-067,Team 10: Cloud Architecture and Release,Cloud,Y2,Performance and load validation,Measure baseline response and DB performance.,P1
+BD-068,Team 10: Cloud Architecture and Release,Cloud,Y2,Staging deployment automation,Build secure reproducible staging deployment checks.,P0
+BD-069,Team 10: Cloud Architecture and Release,Cloud,Y2,Automated migration safety gates,"Enforce disposable-DB migration tests, integration tests, restore/rollback rehearsal and approval before promotion.",P0
+BD-070,Team 10: Cloud Architecture and Release,Cloud,Y1,Release acceptance and operations pack,Document backup restore monitoring incident response and sign-off.,P1
