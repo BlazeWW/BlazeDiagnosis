@@ -13,7 +13,9 @@ case "$origin" in *BlazeWW/BlazeDiagnosis* ) ;; *) echo "Unexpected origin: $ori
 [[ -z "$(git status --porcelain)" ]] || { echo 'Commit/stash local changes first.'; exit 1; }
 git switch -c "$BRANCH"
 mkdir -p docs/active
-cp "$ROOT"/docs/active/*.md docs/active/
+if [[ "$(realpath "$ROOT/docs/active")" != "$(realpath "docs/active")" ]]; then
+    cp "$ROOT"/docs/active/*.md docs/active/
+fi
 git add docs/active/20-70-intern-programme.md docs/active/21-70-intern-task-register.md docs/active/22-cloud-migration-quality-gate.md docs/active/23-release-and-assessment.md
 git commit -m 'docs: establish 70-intern production completion programme'
 git push -u origin "$BRANCH"
