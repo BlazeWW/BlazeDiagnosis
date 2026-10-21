@@ -41,6 +41,50 @@ const vehicleInitialState: CustomerWizardVehicle = {
   year: '',
 };
 
+type WizardFieldErrors = Partial<
+  Record<'firstName' | 'lastName' | 'email' | 'registrationNumber' | 'make' | 'model', string>
+>;
+
+function validateCustomer(customer: CustomerWizardCustomer): WizardFieldErrors {
+  const errors: WizardFieldErrors = {};
+  const email = customer.email.trim();
+
+  if (!customer.firstName.trim()) errors.firstName = "Enter the customer's first name.";
+  if (!customer.lastName.trim()) errors.lastName = "Enter the customer's last name.";
+
+  if (!email && !customer.phone.trim()) {
+    errors.email = 'Enter an email address or phone number.';
+  } else if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errors.email = 'Enter a valid email address.';
+  }
+
+  return errors;
+}
+
+function validateVehicle(vehicle: CustomerWizardVehicle): WizardFieldErrors {
+  const errors: WizardFieldErrors = {};
+
+  if (!vehicle.registrationNumber.trim()) errors.registrationNumber = 'Enter the vehicle registration number.';
+  if (!vehicle.make.trim()) errors.make = 'Enter the vehicle make.';
+  if (!vehicle.model.trim()) errors.model = 'Enter the vehicle model.';
+
+  return errors;
+}
+
+export function calculateCompletionScore(customer: CustomerWizardCustomer, vehicle: CustomerWizardVehicle) {
+  const requiredValues = [
+    customer.firstName,
+    customer.lastName,
+    customer.email.trim() || customer.phone,
+    vehicle.registrationNumber,
+    vehicle.make,
+    vehicle.model,
+  ];
+  const completed = requiredValues.filter((value) => value.trim().length > 0).length;
+
+  return Math.round((completed / requiredValues.length) * 100);
+}
+
 const steps: { description: string; key: CustomerWizardStep; title: string }[] = [
   {
     description: 'Capture the customer contact profile and communication preferences.',
@@ -66,20 +110,10 @@ export function CustomerVehicleWizard() {
   const [savedIntake, setSavedIntake] = useState<CustomerVehicleIntake | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<WizardFieldErrors>({});
   const activeStep = steps[stepIndex];
 
-  const completionScore = useMemo(() => {
-    const requiredValues = [
-      customer.firstName,
-      customer.lastName,
-      customer.email || customer.phone,
-      vehicle.registrationNumber,
-      vehicle.make,
-      vehicle.model,
-    ];
-    const completed = requiredValues.filter(Boolean).length;
-    return Math.round((completed / requiredValues.length) * 100);
-  }, [customer, vehicle]);
+  const completionScore = useMemo(() => calculateCompletionScore(customer, vehicle), [customer, vehicle]);
 
   const updateCustomer = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = event.currentTarget;
@@ -91,10 +125,18 @@ export function CustomerVehicleWizard() {
     setVehicle((current) => ({ ...current, [name]: value }));
   };
 
-  const canContinueFromCustomer = Boolean(customer.firstName && customer.lastName && (customer.email || customer.phone));
-  const canContinueFromVehicle = Boolean(vehicle.registrationNumber && vehicle.make && vehicle.model);
+  const next = () => {
+    const errors = activeStep.key === 'customer' ? validateCustomer(customer) : validateVehicle(vehicle);
+    setFieldErrors(errors);
 
-  const next = () => setStepIndex((current) => Math.min(current + 1, steps.length - 1));
+    const firstInvalidField = Object.keys(errors)[0];
+    if (firstInvalidField) {
+      document.getElementById(firstInvalidField)?.focus();
+      return;
+    }
+
+    setStepIndex((current) => Math.min(current + 1, steps.length - 1));
+  };
   const back = () => setStepIndex((current) => Math.max(current - 1, 0));
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -171,11 +213,11 @@ export function CustomerVehicleWizard() {
         <CardContent>
           <form className="grid gap-6" onSubmit={handleSubmit}>
             {activeStep.key === 'customer' ? (
-              <CustomerStep customer={customer} onChange={updateCustomer} />
+              <CustomerStep customer={customer} errors={fieldErrors} onChange={updateCustomer} />
             ) : null}
 
             {activeStep.key === 'vehicle' ? (
-              <VehicleStep vehicle={vehicle} onChange={updateVehicle} />
+              <VehicleStep errors={fieldErrors} vehicle={vehicle} onChange={updateVehicle} />
             ) : null}
 
             {activeStep.key === 'review' ? (
@@ -190,7 +232,6 @@ export function CustomerVehicleWizard() {
                 </Button>
                 {activeStep.key !== 'review' ? (
                   <Button
-                    disabled={activeStep.key === 'customer' ? !canContinueFromCustomer : !canContinueFromVehicle}
                     onClick={next}
                     type="button"
                     variant="accent"
@@ -220,21 +261,23 @@ export function CustomerVehicleWizard() {
 
 function CustomerStep({
   customer,
+  errors,
   onChange,
 }: {
   customer: CustomerWizardCustomer;
+  errors: WizardFieldErrors;
   onChange: (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
 }) {
   return (
     <div className="grid gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField id="firstName" label="First name">
+        <FormField error={errors.firstName} id="firstName" label="First name">
           <Input autoComplete="given-name" id="firstName" name="firstName" onChange={onChange} required value={customer.firstName} />
         </FormField>
-        <FormField id="lastName" label="Last name">
+        <FormField error={errors.lastName} id="lastName" label="Last name">
           <Input autoComplete="family-name" id="lastName" name="lastName" onChange={onChange} required value={customer.lastName} />
         </FormField>
-        <FormField id="email" label="Email">
+        <FormField error={errors.email} id="email" label="Email">
           <Input autoComplete="email" id="email" name="email" onChange={onChange} type="email" value={customer.email} />
         </FormField>
         <FormField id="phone" label="Mobile / phone">
@@ -285,16 +328,18 @@ function CustomerStep({
 }
 
 function VehicleStep({
+  errors,
   onChange,
   vehicle,
 }: {
+  errors: WizardFieldErrors;
   onChange: (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
   vehicle: CustomerWizardVehicle;
 }) {
   return (
     <div className="grid gap-4">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <FormField id="registrationNumber" label="Registration number">
+        <FormField error={errors.registrationNumber} id="registrationNumber" label="Registration number">
           <Input id="registrationNumber" name="registrationNumber" onChange={onChange} required value={vehicle.registrationNumber} />
         </FormField>
         <FormField id="vin" label="VIN">
@@ -303,10 +348,10 @@ function VehicleStep({
         <FormField id="mileage" label="Mileage / odometer">
           <Input id="mileage" inputMode="numeric" name="mileage" onChange={onChange} value={vehicle.mileage} />
         </FormField>
-        <FormField id="make" label="Make">
+        <FormField error={errors.make} id="make" label="Make">
           <Input id="make" name="make" onChange={onChange} required value={vehicle.make} />
         </FormField>
-        <FormField id="model" label="Model">
+        <FormField error={errors.model} id="model" label="Model">
           <Input id="model" name="model" onChange={onChange} required value={vehicle.model} />
         </FormField>
         <FormField id="year" label="Year">
