@@ -45,7 +45,7 @@ type WizardFieldErrors = Partial<
   Record<'firstName' | 'lastName' | 'email' | 'registrationNumber' | 'make' | 'model', string>
 >;
 
-function validateCustomer(customer: CustomerWizardCustomer): WizardFieldErrors {
+export function validateCustomer(customer: CustomerWizardCustomer): WizardFieldErrors {
   const errors: WizardFieldErrors = {};
   const email = customer.email.trim();
 
@@ -61,7 +61,7 @@ function validateCustomer(customer: CustomerWizardCustomer): WizardFieldErrors {
   return errors;
 }
 
-function validateVehicle(vehicle: CustomerWizardVehicle): WizardFieldErrors {
+export function validateVehicle(vehicle: CustomerWizardVehicle): WizardFieldErrors {
   const errors: WizardFieldErrors = {};
 
   if (!vehicle.registrationNumber.trim()) errors.registrationNumber = 'Enter the vehicle registration number.';
@@ -468,4 +468,3 @@ function ReviewCard({ rows, title }: { rows: [string, string][]; title: string }
     </div>
   );
 }
-
