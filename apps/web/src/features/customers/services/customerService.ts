@@ -139,6 +139,9 @@ export async function createCustomerVehicleIntake(
   tenantId: string,
   input: CustomerVehicleIntakeInput,
 ) {
+  await requireTenantPermission(tenantId, 'customers.write');
+  await requireTenantPermission(tenantId, 'vehicles.write');
+
   const customer = await createCustomer(tenantId, {
     email: input.customer.email || undefined,
     firstName: input.customer.firstName,

@@ -7,6 +7,7 @@ const tenantContextMock = vi.hoisted(() => ({
 }));
 const customerServiceMock = vi.hoisted(() => ({
   createCustomerVehicleIntake: vi.fn(),
+  getCustomerById: vi.fn(),
 }));
 
 vi.mock('@/lib/tenancy/tenantContext', () => tenantContextMock);
@@ -30,6 +31,7 @@ describe('/api/customer-intakes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     tenantContextMock.requireTenantContext.mockResolvedValue({ tenantId: 'tenant-1' });
+    customerServiceMock.getCustomerById.mockResolvedValue({ id: 'customer-1' });
   });
 
   it('returns a customer intake history envelope for a customer', async () => {
@@ -38,10 +40,28 @@ describe('/api/customer-intakes', () => {
     );
 
     expect(response.status).toBe(200);
+    expect(customerServiceMock.getCustomerById).toHaveBeenCalledWith(
+      'tenant-1',
+      'customer-1',
+    );
     await expect(readJson(response)).resolves.toEqual({
       data: { intakes: [] },
       meta: { count: 0, customerId: 'customer-1' },
       success: true,
+    });
+  });
+
+  it('does not return intake history for a customer outside the tenant', async () => {
+    customerServiceMock.getCustomerById.mockResolvedValue(null);
+
+    const response = await GET(
+      new Request('http://localhost/api/customer-intakes?customerId=customer-2'),
+    );
+
+    expect(response.status).toBe(404);
+    await expect(readJson(response)).resolves.toMatchObject({
+      error: { code: 'NOT_FOUND' },
+      success: false,
     });
   });
 

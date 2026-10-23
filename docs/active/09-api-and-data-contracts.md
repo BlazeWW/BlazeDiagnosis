@@ -36,6 +36,11 @@ Failure:
 - [ ] Avoid leaking internal stack traces.
 - [ ] Add request IDs to logs.
 
+Customer intake reads resolve the customer through the authenticated tenant context and
+require the tenant-scoped customer read permission. Intake creation checks both customer
+and vehicle write permissions before creating records. Vehicle creation also validates
+that its primary customer is active and belongs to the same tenant.
+
 ## Canonical routes to keep
 
 - [ ] `/api/customers`

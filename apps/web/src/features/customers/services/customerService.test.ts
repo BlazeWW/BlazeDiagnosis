@@ -80,6 +80,10 @@ describe('customerService', () => {
     mockSelectLimitSequence([[]]);
 
     await expect(getCustomerById('tenant-1', 'missing')).resolves.toBeNull();
+    expect(authGuardMock.requireTenantPermission).toHaveBeenCalledWith(
+      'tenant-1',
+      'customers.read',
+    );
   });
 
   it('updates customer records with tenant scoping', async () => {
@@ -136,5 +140,40 @@ describe('customerService', () => {
       'tenant-1',
       expect.objectContaining({ primaryCustomerId: 'customer-1' }),
     );
+    expect(authGuardMock.requireTenantPermission).toHaveBeenCalledWith(
+      'tenant-1',
+      'customers.write',
+    );
+    expect(authGuardMock.requireTenantPermission).toHaveBeenCalledWith(
+      'tenant-1',
+      'vehicles.write',
+    );
+  });
+
+  it('checks both permissions before creating an intake', async () => {
+    authGuardMock.requireTenantPermission.mockImplementation(
+      async (_tenantId: string, permission: string) => {
+        if (permission === 'vehicles.write') {
+          throw new Error('Missing permission: vehicles.write');
+        }
+      },
+    );
+
+    await expect(
+      createCustomerVehicleIntake('tenant-1', {
+        customer: {
+          firstName: 'Jane',
+          lastName: 'Customer',
+        },
+        vehicle: {
+          make: 'Toyota',
+          model: 'Hilux',
+          registrationNumber: 'CA123456',
+        },
+      }),
+    ).rejects.toThrow('Missing permission: vehicles.write');
+
+    expect(dbMock.insert).not.toHaveBeenCalled();
+    expect(vehicleServiceMock.createVehicle).not.toHaveBeenCalled();
   });
 });

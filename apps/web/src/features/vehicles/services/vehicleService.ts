@@ -2,11 +2,15 @@ import { and, eq } from 'drizzle-orm';
 
 import { db } from '@/db/client';
 import {
+  customers,
   vehicleCustomers,
   vehicleOdometerReadings,
   vehicles,
 } from '@/db/schema';
-import { requireTenantPermission } from '@/lib/authorization/guards';
+import {
+  requireTenantPermission,
+  TenantAccessError,
+} from '@/lib/authorization/guards';
 
 import type { CreateVehicleInput } from '../schemas/vehicleSchema';
 
@@ -15,6 +19,22 @@ export async function createVehicle(
   input: CreateVehicleInput,
 ) {
   await requireTenantPermission(tenantId, 'vehicles.write');
+
+  const [customer] = await db
+    .select()
+    .from(customers)
+    .where(
+      and(
+        eq(customers.tenantId, tenantId),
+        eq(customers.id, input.primaryCustomerId),
+        eq(customers.isArchived, false),
+      ),
+    )
+    .limit(1);
+
+  if (!customer) {
+    throw new TenantAccessError();
+  }
 
   if (input.vin) {
     const [existingVin] = await db

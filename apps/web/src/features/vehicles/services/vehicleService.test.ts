@@ -2,6 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const authGuardMock = vi.hoisted(() => ({
   requireTenantPermission: vi.fn(),
+  TenantAccessError: class extends Error {
+    constructor(message = 'Cross-tenant access denied or missing permission.') {
+      super(message);
+      this.name = 'TenantAccessError';
+    }
+  },
 }));
 const dbMock = vi.hoisted(() => ({
   select: vi.fn(),
@@ -12,6 +18,7 @@ const dbMock = vi.hoisted(() => ({
 vi.mock('@/lib/authorization/guards', () => authGuardMock);
 vi.mock('@/db/client', () => ({ db: dbMock }));
 
+import { TenantAccessError } from '@/lib/authorization/guards';
 import {
   createVehicle,
   deleteVehicle,
@@ -37,7 +44,7 @@ describe('vehicleService', () => {
   });
 
   it('creates a vehicle, owner link, and odometer reading in a transaction', async () => {
-    mockSelectLimitSequence([[], []]);
+    mockSelectLimitSequence([[{ id: 'customer-1' }], [], []]);
     const tx = {
       insert: vi.fn(() => ({
         values: vi.fn(() => ({
@@ -61,7 +68,7 @@ describe('vehicleService', () => {
   });
 
   it('rejects duplicate VIN records', async () => {
-    mockSelectLimitSequence([[{ id: 'existing-vehicle' }]]);
+    mockSelectLimitSequence([[{ id: 'customer-1' }], [{ id: 'existing-vehicle' }]]);
 
     await expect(
       createVehicle('tenant-1', {
@@ -71,6 +78,20 @@ describe('vehicleService', () => {
         vin: 'VIN123',
       }),
     ).rejects.toThrow('same VIN');
+  });
+
+  it('rejects linking a vehicle to a customer outside the tenant', async () => {
+    mockSelectLimitSequence([[]]);
+
+    await expect(
+      createVehicle('tenant-1', {
+        make: 'Toyota',
+        model: 'Hilux',
+        primaryCustomerId: 'customer-2',
+      }),
+    ).rejects.toBeInstanceOf(TenantAccessError);
+
+    expect(dbMock.transaction).not.toHaveBeenCalled();
   });
 
   it('lists vehicles for a customer', async () => {
