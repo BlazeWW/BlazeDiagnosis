@@ -48,11 +48,12 @@ type WizardFieldErrors = Partial<
 export function validateCustomer(customer: CustomerWizardCustomer): WizardFieldErrors {
   const errors: WizardFieldErrors = {};
   const email = customer.email.trim();
+  const phone = customer.phone.trim();
 
   if (!customer.firstName.trim()) errors.firstName = "Enter the customer's first name.";
   if (!customer.lastName.trim()) errors.lastName = "Enter the customer's last name.";
 
-  if (!email && !customer.phone.trim()) {
+  if (!email && !phone) {
     errors.email = 'Enter an email address or phone number.';
   } else if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     errors.email = 'Enter a valid email address.';
@@ -75,7 +76,7 @@ export function calculateCompletionScore(customer: CustomerWizardCustomer, vehic
   const requiredValues = [
     customer.firstName,
     customer.lastName,
-    customer.email.trim() || customer.phone,
+    customer.email.trim() || customer.phone.trim(),
     vehicle.registrationNumber,
     vehicle.make,
     vehicle.model,
@@ -118,11 +119,29 @@ export function CustomerVehicleWizard() {
   const updateCustomer = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = event.currentTarget;
     setCustomer((current) => ({ ...current, [name]: value }));
+    setFieldErrors((current) => {
+      if (!current[name as keyof typeof current]) {
+        return current;
+      }
+
+      const nextErrors = { ...current };
+      delete nextErrors[name as keyof typeof nextErrors];
+      return nextErrors;
+    });
   };
 
   const updateVehicle = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = event.currentTarget;
     setVehicle((current) => ({ ...current, [name]: value }));
+    setFieldErrors((current) => {
+      if (!current[name as keyof typeof current]) {
+        return current;
+      }
+
+      const nextErrors = { ...current };
+      delete nextErrors[name as keyof typeof nextErrors];
+      return nextErrors;
+    });
   };
 
   const next = () => {
@@ -141,8 +160,20 @@ export function CustomerVehicleWizard() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setIsSubmitting(true);
     setStatusMessage(null);
+
+    const customerErrors = validateCustomer(customer);
+    const vehicleErrors = validateVehicle(vehicle);
+    const errors = { ...customerErrors, ...vehicleErrors };
+    setFieldErrors(errors);
+
+    const firstInvalidField = Object.keys(errors)[0];
+    if (firstInvalidField) {
+      document.getElementById(firstInvalidField)?.focus();
+      return;
+    }
+
+    setIsSubmitting(true);
 
     const intake: CustomerVehicleIntake = {
       createdAt: new Date().toISOString(),
@@ -167,6 +198,8 @@ export function CustomerVehicleWizard() {
     setCustomer(customerInitialState);
     setVehicle(vehicleInitialState);
     setSavedIntake(null);
+    setStatusMessage(null);
+    setFieldErrors({});
     setStepIndex(0);
   };
 
@@ -222,6 +255,12 @@ export function CustomerVehicleWizard() {
 
             {activeStep.key === 'review' ? (
               <ReviewStep customer={customer} savedIntake={savedIntake} vehicle={vehicle} />
+            ) : null}
+
+            {statusMessage ? (
+              <p aria-live="polite" className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                {statusMessage}
+              </p>
             ) : null}
 
             <FormActions className="justify-between">
