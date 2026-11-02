@@ -74,6 +74,14 @@ or:
 
 The quote API was also standardized while adding tests. `/api/quotes` now uses the shared response helpers, tenant context, validation, and quote service functions instead of returning raw `NextResponse.json({ quote })` payloads.
 
+## Form field accessibility evidence
+
+- `apps/web/src/components/forms/formField.tsx` applies the field id to its single child control, keeping it aligned with the label's `htmlFor`; existing described-by ids are retained alongside description and error ids.
+- `apps/web/src/components/forms/formField.test.tsx` covers id association, described-by merging, and invalid state.
+- Focused verification command: `pnpm --filter @blaze-diagnostics/web exec vitest run src/components/forms/formField.test.tsx`.
+- Editor diagnostics report no errors for the component or test. The Vitest command was skipped, so its runtime result is unconfirmed.
+- Authorization and tenant scoping are not applicable to this presentational component; it performs no data access or mutation.
+
 ## Fixes made during test creation
 
 - Added root and web-level test scripts.
