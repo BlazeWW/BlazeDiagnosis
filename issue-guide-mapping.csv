@@ -1,0 +1,71 @@
+issue_number,id,title,level,priority,squad,guide_file,issue_url
+93,BD-001,Route and feature inventory,Y1,P1,Architecture and Identity,docs/active/issue-guides/BD-001.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/93
+94,BD-002,Production authentication validation,Y2,P0,Architecture and Identity,docs/active/issue-guides/BD-002.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/94
+95,BD-003,Tenant authorization guards,Y2,P0,Architecture and Identity,docs/active/issue-guides/BD-003.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/95
+96,BD-004,Role permission matrix,Y2,P0,Architecture and Identity,docs/active/issue-guides/BD-004.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/96
+97,BD-005,Drizzle schema and migration audit,Y2,P0,Architecture and Identity,docs/active/issue-guides/BD-005.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/97
+98,BD-006,API response and Zod consistency,Y1,P1,Architecture and Identity,docs/active/issue-guides/BD-006.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/98
+99,BD-007,Reusable typed contracts and fixtures,Y1,P1,Architecture and Identity,docs/active/issue-guides/BD-007.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/99
+100,BD-008,Station dashboard metrics,Y2,P1,Workshop and Vehicles,docs/active/issue-guides/BD-008.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/100
+101,BD-009,Customer registration wizard UX,Y1,P1,Workshop and Vehicles,docs/active/issue-guides/BD-009.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/101
+102,BD-010,Customer profile persistence,Y2,P1,Workshop and Vehicles,docs/active/issue-guides/BD-010.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/102
+103,BD-011,Vehicle registration wizard,Y1,P1,Workshop and Vehicles,docs/active/issue-guides/BD-011.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/103
+104,BD-012,Vehicle service history,Y2,P1,Workshop and Vehicles,docs/active/issue-guides/BD-012.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/104
+105,BD-013,Customer and vehicle search,Y1,P1,Workshop and Vehicles,docs/active/issue-guides/BD-013.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/105
+106,BD-014,Workshop staffing interface,Y2,P1,Workshop and Vehicles,docs/active/issue-guides/BD-014.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/106
+107,BD-015,Job card persistence,Y2,P0,Diagnostics and Job Cards,docs/active/issue-guides/BD-015.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/107
+108,BD-016,Job lifecycle status model,Y2,P0,Diagnostics and Job Cards,docs/active/issue-guides/BD-016.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/108
+109,BD-017,Digital inspection checklist,Y1,P1,Diagnostics and Job Cards,docs/active/issue-guides/BD-017.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/109
+110,BD-018,Defect severity classification,Y1,P1,Diagnostics and Job Cards,docs/active/issue-guides/BD-018.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/110
+111,BD-019,Diagnostic evidence attachments,Y2,P1,Diagnostics and Job Cards,docs/active/issue-guides/BD-019.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/111
+112,BD-020,Labour tracking and technician notes,Y2,P1,Diagnostics and Job Cards,docs/active/issue-guides/BD-020.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/112
+113,BD-021,Customer inspection report,Y1,P1,Diagnostics and Job Cards,docs/active/issue-guides/BD-021.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/113
+114,BD-022,Quote draft persistence,Y2,P0,Quotes and Invoices,docs/active/issue-guides/BD-022.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/114
+115,BD-023,Quote revisions,Y2,P0,Quotes and Invoices,docs/active/issue-guides/BD-023.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/115
+116,BD-024,Mobile item-level approvals,Y1,P0,Quotes and Invoices,docs/active/issue-guides/BD-024.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/116
+117,BD-025,Tax pricing and rounding tests,Y2,P0,Quotes and Invoices,docs/active/issue-guides/BD-025.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/117
+118,BD-026,Branded quote PDF,Y1,P1,Quotes and Invoices,docs/active/issue-guides/BD-026.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/118
+119,BD-027,Invoice issuance and numbering,Y2,P0,Quotes and Invoices,docs/active/issue-guides/BD-027.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/119
+120,BD-028,Payment events and invoice states,Y2,P1,Quotes and Invoices,docs/active/issue-guides/BD-028.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/120
+121,BD-029,Parts catalogue search,Y1,P1,Parts and Suppliers,docs/active/issue-guides/BD-029.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/121
+122,BD-030,Vehicle fitment logic,Y2,P1,Parts and Suppliers,docs/active/issue-guides/BD-030.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/122
+123,BD-031,Parts request persistence,Y2,P0,Parts and Suppliers,docs/active/issue-guides/BD-031.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/123
+124,BD-032,Supplier quote response UI,Y1,P1,Parts and Suppliers,docs/active/issue-guides/BD-032.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/124
+125,BD-033,Supplier offer comparison,Y2,P1,Parts and Suppliers,docs/active/issue-guides/BD-033.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/125
+126,BD-034,Purchase order lifecycle,Y2,P1,Parts and Suppliers,docs/active/issue-guides/BD-034.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/126
+127,BD-035,Delivery and receipt tracking,Y1,P1,Parts and Suppliers,docs/active/issue-guides/BD-035.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/127
+128,BD-036,Customer dashboard,Y1,P1,Customer Communications,docs/active/issue-guides/BD-036.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/128
+129,BD-037,Customer service history,Y2,P1,Customer Communications,docs/active/issue-guides/BD-037.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/129
+130,BD-038,Repair progress timeline,Y1,P1,Customer Communications,docs/active/issue-guides/BD-038.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/130
+131,BD-039,Persistent messaging threads,Y2,P1,Customer Communications,docs/active/issue-guides/BD-039.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/131
+132,BD-040,Notification preferences,Y1,P1,Customer Communications,docs/active/issue-guides/BD-040.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/132
+133,BD-041,Email notification adapter,Y2,P1,Customer Communications,docs/active/issue-guides/BD-041.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/133
+134,BD-042,Customer document centre,Y1,P1,Customer Communications,docs/active/issue-guides/BD-042.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/134
+135,BD-043,Tenant management,Y2,P0,SaaS Platform,docs/active/issue-guides/BD-043.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/135
+136,BD-044,Tenant onboarding,Y1,P1,SaaS Platform,docs/active/issue-guides/BD-044.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/136
+137,BD-045,Subscriptions and entitlements,Y2,P1,SaaS Platform,docs/active/issue-guides/BD-045.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/137
+138,BD-046,Tenant feature flag administration,Y2,P1,SaaS Platform,docs/active/issue-guides/BD-046.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/138
+139,BD-047,Workshop branding,Y1,P1,SaaS Platform,docs/active/issue-guides/BD-047.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/139
+140,BD-048,Usage analytics,Y2,P1,SaaS Platform,docs/active/issue-guides/BD-048.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/140
+141,BD-049,Audit log browser,Y1,P1,SaaS Platform,docs/active/issue-guides/BD-049.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/141
+142,BD-050,Design tokens audit,Y1,P1,UX and Accessibility,docs/active/issue-guides/BD-050.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/142
+143,BD-051,Responsive app navigation,Y1,P1,UX and Accessibility,docs/active/issue-guides/BD-051.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/143
+144,BD-052,Forms and validation patterns,Y1,P1,UX and Accessibility,docs/active/issue-guides/BD-052.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/144
+145,BD-053,Loading empty and error components,Y1,P1,UX and Accessibility,docs/active/issue-guides/BD-053.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/145
+146,BD-054,Light and dark themes,Y1,P1,UX and Accessibility,docs/active/issue-guides/BD-054.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/146
+147,BD-055,WCAG 2.2 AA remediation,Y2,P1,UX and Accessibility,docs/active/issue-guides/BD-055.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/147
+148,BD-056,Contextual help and onboarding,Y1,P1,UX and Accessibility,docs/active/issue-guides/BD-056.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/148
+149,BD-057,Application threat model,Y2,P0,Cybersecurity Assurance,docs/active/issue-guides/BD-057.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/149
+150,BD-058,Cross-tenant negative tests,Y2,P0,Cybersecurity Assurance,docs/active/issue-guides/BD-058.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/150
+151,BD-059,Session security suite,Y2,P0,Cybersecurity Assurance,docs/active/issue-guides/BD-059.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/151
+152,BD-060,API authorization and validation audit,Y2,P0,Cybersecurity Assurance,docs/active/issue-guides/BD-060.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/152
+153,BD-061,Dependency and secrets audit,Y1,P1,Cybersecurity Assurance,docs/active/issue-guides/BD-061.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/153
+154,BD-062,Private uploads and data exposure,Y2,P0,Cybersecurity Assurance,docs/active/issue-guides/BD-062.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/154
+155,BD-063,Privacy and retention assessment,Y1,P1,Cybersecurity Assurance,docs/active/issue-guides/BD-063.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/155
+156,BD-064,Continuous integration quality gates,Y2,P0,Cloud Architecture and Release,docs/active/issue-guides/BD-064.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/156
+157,BD-065,Local PostgreSQL reproducibility,Y1,P1,Cloud Architecture and Release,docs/active/issue-guides/BD-065.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/157
+158,BD-066,Browser end-to-end tests,Y2,P0,Cloud Architecture and Release,docs/active/issue-guides/BD-066.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/158
+159,BD-067,Performance and load validation,Y2,P1,Cloud Architecture and Release,docs/active/issue-guides/BD-067.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/159
+160,BD-068,Staging deployment automation,Y2,P0,Cloud Architecture and Release,docs/active/issue-guides/BD-068.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/160
+161,BD-069,Automated migration safety gates,Y2,P0,Cloud Architecture and Release,docs/active/issue-guides/BD-069.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/161
+162,BD-070,Release acceptance and operations pack,Y1,P1,Cloud Architecture and Release,docs/active/issue-guides/BD-070.md,https://github.com/BlazeWW/BlazeDiagnosis/issues/162
