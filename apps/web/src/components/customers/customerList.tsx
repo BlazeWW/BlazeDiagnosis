@@ -22,6 +22,8 @@ import { Input } from '@/components/ui/input';
 import { deleteCustomer, fetchCustomers } from '@/lib/apiClient';
 import type { Customer } from '@/types/customers';
 
+// Build a readable display name, falling back to a generic label when fields are empty.
+
 function getCustomerName(customer: Customer) {
   const name = `${customer.firstName ?? ''} ${customer.lastName ?? ''}`.trim();
   return name || 'Unnamed customer';
@@ -32,10 +34,14 @@ export function CustomerList() {
   const router = useRouter();
   const locale = params.locale ?? 'en';
 
+  // Local state holds the customer directory, request status, and active search term.
+
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
+
+  // Soft-delete a customer and immediately remove it from the visible list after a successful API call.
 
   const handleDelete = async (id: string) => {
     if (!confirm('Archive this customer?')) return;
@@ -51,6 +57,8 @@ export function CustomerList() {
       );
     }
   };
+
+  // Fetch the customer directory once when the component mounts and keep the UI synced with the API response.
 
   useEffect(() => {
     const loadCustomers = async () => {
@@ -74,6 +82,7 @@ export function CustomerList() {
     void loadCustomers();
   }, []);
 
+  // Filter the list using a case-insensitive match across name, email, phone, and status values.
   const filteredCustomers = useMemo(() => {
     const search = query.trim().toLowerCase();
 
@@ -93,6 +102,7 @@ export function CustomerList() {
     );
   }, [customers, query]);
 
+  // Render the customer directory, including loading, error, empty, and populated states.
   return (
     <Card>
       <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">

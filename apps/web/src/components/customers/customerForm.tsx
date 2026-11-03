@@ -3,6 +3,8 @@
 import type { ChangeEvent, FormEvent } from 'react';
 import { useState } from 'react';
 
+
+
 import { FormActions, FormField } from '@/components/forms';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,6 +17,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { createCustomer, updateCustomer } from '@/lib/apiClient';
 import type { CustomerFormState } from '@/types/customers';
+
+// Default values for a new customer record so the form can be reset cleanly.
 
 const initialState: CustomerFormState = {
   address: '',
@@ -29,11 +33,15 @@ const initialState: CustomerFormState = {
   taxNumber: '',
 };
 
+
+
 interface CustomerFormProps {
   customerId?: string;
   initialData?: CustomerFormState;
   onSuccess?: () => void;
 }
+
+// Keep the form state in sync with the editable fields and allow reuse for edit/reset flows.
 
 export function CustomerForm({
   customerId,
@@ -44,6 +52,8 @@ export function CustomerForm({
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const isEditing = Boolean(customerId);
 
+// Update the matching field whenever the user types into a form input.
+ 
   const handleChange = (
     event: ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
@@ -58,10 +68,14 @@ export function CustomerForm({
     setCustomer((current) => ({ ...current, [target.name]: value }));
   };
 
+// Submit either a create or update request based on whether this form is editing an existing customer.
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setStatusMessage(null);
 
+// Keep secondary contact details in a readable notes block for downstream API consumers.
+    
     try {
       const notes = [
         customer.companyName ? `Company: ${customer.companyName}` : undefined,
@@ -105,7 +119,9 @@ export function CustomerForm({
     }
   };
 
-  return (
+  // Render the customer capture form with the configured fields and action buttons.
+ 
+return (
     <Card>
       <CardHeader>
         <CardTitle>Capture customer</CardTitle>

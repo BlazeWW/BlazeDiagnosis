@@ -16,6 +16,7 @@ import type {
   CustomerWizardVehicle,
 } from '@/types/customerIntake';
 
+// Default values for a brand-new customer intake so the wizard can reset cleanly.
 const customerInitialState: CustomerWizardCustomer = {
   address: '',
   companyName: '',
@@ -27,6 +28,7 @@ const customerInitialState: CustomerWizardCustomer = {
   preferredContactMethod: '',
 };
 
+// Default values for a brand-new vehicle intake so the form can be restarted at any point.
 const vehicleInitialState: CustomerWizardVehicle = {
   color: '',
   engineDetails: '',
@@ -45,6 +47,7 @@ type WizardFieldErrors = Partial<
   Record<'firstName' | 'lastName' | 'email' | 'registrationNumber' | 'make' | 'model', string>
 >;
 
+// Validate the customer contact step before allowing movement to the next wizard section.
 export function validateCustomer(customer: CustomerWizardCustomer): WizardFieldErrors {
   const errors: WizardFieldErrors = {};
   const email = customer.email.trim();
@@ -62,6 +65,7 @@ export function validateCustomer(customer: CustomerWizardCustomer): WizardFieldE
   return errors;
 }
 
+// Validate the vehicle details step to ensure the minimum required registration and model data is present.
 export function validateVehicle(vehicle: CustomerWizardVehicle): WizardFieldErrors {
   const errors: WizardFieldErrors = {};
 
@@ -72,6 +76,7 @@ export function validateVehicle(vehicle: CustomerWizardVehicle): WizardFieldErro
   return errors;
 }
 
+// Score how complete the intake is based on the required fields captured so far.
 export function calculateCompletionScore(customer: CustomerWizardCustomer, vehicle: CustomerWizardVehicle) {
   const requiredValues = [
     customer.firstName,
@@ -105,6 +110,7 @@ const steps: { description: string; key: CustomerWizardStep; title: string }[] =
 ];
 
 export function CustomerVehicleWizard() {
+  // Track which step the user is currently working through and keep the form data isolated per section.
   const [stepIndex, setStepIndex] = useState(0);
   const [customer, setCustomer] = useState<CustomerWizardCustomer>(customerInitialState);
   const [vehicle, setVehicle] = useState<CustomerWizardVehicle>(vehicleInitialState);
@@ -114,8 +120,10 @@ export function CustomerVehicleWizard() {
   const [fieldErrors, setFieldErrors] = useState<WizardFieldErrors>({});
   const activeStep = steps[stepIndex];
 
+  // Show progress as a percentage based on the required data already captured.
   const completionScore = useMemo(() => calculateCompletionScore(customer, vehicle), [customer, vehicle]);
 
+  // Update the customer fields in place while clearing any validation error for that field.
   const updateCustomer = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = event.currentTarget;
     setCustomer((current) => ({ ...current, [name]: value }));
@@ -130,6 +138,7 @@ export function CustomerVehicleWizard() {
     });
   };
 
+  // Update the vehicle fields in place while clearing any validation error for that field.
   const updateVehicle = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = event.currentTarget;
     setVehicle((current) => ({ ...current, [name]: value }));
@@ -144,6 +153,7 @@ export function CustomerVehicleWizard() {
     });
   };
 
+  // Advance to the next step only after validating the current section's required fields.
   const next = () => {
     const errors = activeStep.key === 'customer' ? validateCustomer(customer) : validateVehicle(vehicle);
     setFieldErrors(errors);
@@ -158,6 +168,7 @@ export function CustomerVehicleWizard() {
   };
   const back = () => setStepIndex((current) => Math.max(current - 1, 0));
 
+  // Validate the full intake before creating the customer and vehicle records in the API.
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setStatusMessage(null);
@@ -194,6 +205,7 @@ export function CustomerVehicleWizard() {
     }
   };
 
+  // Reset the wizard back to the initial intake state to start over cleanly.
   const reset = () => {
     setCustomer(customerInitialState);
     setVehicle(vehicleInitialState);
@@ -203,6 +215,7 @@ export function CustomerVehicleWizard() {
     setStepIndex(0);
   };
 
+  // Render the wizard layout with a left-side progress rail and the active intake form region.
   return (
     <div className="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
       <Card variant="panel">
@@ -307,6 +320,7 @@ function CustomerStep({
   errors: WizardFieldErrors;
   onChange: (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
 }) {
+  // Customer step fields capture contact preferences and operational notes for the intake record.
   return (
     <div className="grid gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -375,6 +389,7 @@ function VehicleStep({
   onChange: (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
   vehicle: CustomerWizardVehicle;
 }) {
+  // Vehicle details capture the primary identifiers needed for workshop triage and repair planning.
   return (
     <div className="grid gap-4">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -457,6 +472,7 @@ function ReviewStep({
   savedIntake: CustomerVehicleIntake | null;
   vehicle: CustomerWizardVehicle;
 }) {
+  // Final review summarises the customer and vehicle data before submission to the backend API.
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <ReviewCard
@@ -493,6 +509,7 @@ function ReviewStep({
 }
 
 function ReviewCard({ rows, title }: { rows: [string, string][]; title: string }) {
+  // Each summary card groups the intake data into a readable, review-friendly layout.
   return (
     <div className="rounded-xl border border-border bg-muted/40 p-4">
       <h3 className="font-semibold">{title}</h3>
