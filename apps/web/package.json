@@ -27,7 +27,7 @@
     "class-variance-authority": "latest",
     "clsx": "latest",
     "drizzle-orm": "^0.45.2",
-    "jose": "^6.2.3",
+    "jose": "^6.2.15",
     "lucide-react": "^1.21.0",
     "next": "latest",
     "next-intl": "latest",
@@ -46,6 +46,7 @@
     "@types/pg": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "@vitest/coverage-v8": "^4.1.9",
     "dotenv": "^17.2.3",
     "drizzle-kit": "latest",
     "eslint": "9.39.1",
@@ -55,7 +56,6 @@
     "tailwindcss": "latest",
     "tsx": "latest",
     "typescript": "latest",
-    "vitest": "^4.1.9",
-    "@vitest/coverage-v8": "^4.1.9"
+    "vitest": "^4.1.9"
   }
 }
