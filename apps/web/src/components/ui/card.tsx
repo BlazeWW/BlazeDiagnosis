@@ -39,12 +39,17 @@ export function CardHeader({
   );
 }
 
+export interface CardTitleProps extends React.HTMLAttributes<HTMLHeadingElement> {
+  as?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+}
+
 export function CardTitle({
   className,
+  as: Tag = 'h3', // Defaults safely to h3 so existing platform dashboards remain untouched
   ...props
-}: React.HTMLAttributes<HTMLHeadingElement>) {
+}: CardTitleProps) {
   return (
-    <h3
+    <Tag
       className={cn('text-base font-semibold leading-none tracking-tight', className)}
       {...props}
     />
