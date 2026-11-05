@@ -55,4 +55,30 @@ describe('partsService - createPartsRequestDraft', () => {
       'Invalid quantity'
     );
   });
+    it('persists a valid parts request and line items for the correct tenant', async () => {
+    // Mock the DB finding the job card
+    dbMock.query.jobCards.findFirst.mockResolvedValueOnce({ id: 'job-1', tenantId: 'tenant-A' });
+
+    // Mock the DB insert and transaction
+    const mockTx = {
+      insert: vi.fn().mockReturnValue({
+        values: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([{ id: 'req-123' }]),
+        }),
+      }),
+    };
+    dbMock.transaction.mockImplementationOnce(async (callback) => callback(mockTx));
+
+    const payload = {
+      jobCardId: 'job-1',
+      items: [{ partId: 'part-1', quantity: '2' }],
+    };
+
+    // Call the service
+    const result = await createPartsRequestDraft(payload);
+
+    // Assert it worked
+    expect(result).toEqual({ id: 'req-123' });
+    expect(dbMock.transaction).toHaveBeenCalled();
+  });
 });

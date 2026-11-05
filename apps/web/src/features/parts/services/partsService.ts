@@ -1,9 +1,9 @@
 import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { jobCards } from '@/db/schema/jobs';
 
 import { db } from '@/db/client';
 import { parts, partsRequests, partsRequestItems } from '@/db/schema/parts';
-import { supplierResponses } from '@/db/schema/suppliers';
 import { requireTenantContext } from '@/lib/tenancy/tenantContext';
 
 export interface ICreatePartPayload {
@@ -83,6 +83,27 @@ export async function getTenantPartsRequests(jobCardId: string) {
 export async function createPartsRequestDraft(input: ICreatePartsRequestPayload) {
   const tenant = await requireTenantContext();
   
+  // 1. BD-031 FIX: Verify job card belongs to this tenant
+  const jobCard = await db.query.jobCards.findFirst({
+    where: and(
+      eq(jobCards.id, input.jobCardId),
+      eq(jobCards.tenantId, tenant.tenantId)
+    )
+  });
+
+  if (!jobCard) {
+    throw new Error('Job card not found or unauthorized');
+  }
+
+  // 2. BD-031 FIX: Validate quantities
+  for (const item of input.items) {
+    const qty = Number(item.quantity);
+    if (isNaN(qty) || qty <= 0) {
+      throw new Error('Invalid quantity');
+    }
+  }
+
+  // 3. Proceed with the transaction
   return await db.transaction(async (tx) => {
     const [partsRequest] = await tx
       .insert(partsRequests)
@@ -116,8 +137,11 @@ export async function addPartToCatalogAction(payload: ICreatePartPayload) {
     const item = await createCatalogPartEntry(payload);
     revalidatePath('/parts-request');
     return { success: true, data: item };
-  } catch (error: any) {
-    return { success: false, error: error.message || 'Failed to append to stock logs.' };
+  } catch (error: unknown) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Failed to append to stock logs.' 
+    };
   }
 }
 
@@ -127,7 +151,10 @@ export async function createPartsRequestAction(payload: ICreatePartsRequestPaylo
     const requestDraft = await createPartsRequestDraft(payload);
     revalidatePath('/parts-requests');
     return { success: true, data: requestDraft };
-  } catch (error: any) {
-    return { success: false, error: error.message || 'Failed to submit request draft.' };
+  } catch (error: unknown) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Failed to submit request draft.' 
+    };
   }
 }

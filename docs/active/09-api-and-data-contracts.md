@@ -35,6 +35,8 @@ Failure:
 - [ ] Return the standard response envelope.
 - [ ] Avoid leaking internal stack traces.
 - [ ] Add request IDs to logs.
+- [x] **Reject cross-tenant job card references in parts requests (BD-031).**
+- [x] **Validate parts request item quantities must be > 0 (BD-031).**
 
 ## Canonical routes to keep
 
@@ -65,7 +67,7 @@ Failure:
 - [ ] Quote line item DTO.
 - [ ] Quote approval DTO.
 - [ ] Invoice DTO.
-- [ ] Parts request DTO.
+- [x] Parts request DTO (Validated in `createPartsRequestDraft`).
 - [ ] Supplier response DTO.
 - [ ] Tenant branding DTO.
 - [ ] Audit event DTO.
