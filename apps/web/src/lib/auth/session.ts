@@ -47,6 +47,12 @@ export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
           'vehicles.read',
           'vehicles.write',
           'vehicles.delete',
+          'jobs.read',
+          'jobs.create',
+          'jobs.assign',
+          'jobs.update_status',
+          'jobs.add_internal_note',
+          'jobs.add_customer_note',
         ] as Permission[],
         tenantMemberships: [],
       };
