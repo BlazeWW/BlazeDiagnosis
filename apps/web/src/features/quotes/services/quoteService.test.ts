@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { PgDialect } from 'drizzle-orm/pg-core'
 
 const authGuardMock = vi.hoisted(() => ({
   requireTenantPermission: vi.fn(),
@@ -16,6 +17,7 @@ import {
   getQuoteWithItems,
   lockApprovedQuote,
   sendQuoteToCustomer,
+  recalculateQuoteTotals
 } from './quoteService';
 
 describe('quoteService', () => {
@@ -89,5 +91,60 @@ describe('quoteService', () => {
       id: 'quote-1',
       status: 'locked',
     });
+  });
+});
+
+describe('BD-025: recalculateQuoteTotals', () => {
+  const dialect = new PgDialect();
+
+  // The function makes two database calls: SELECT the lines, then UPDATE the quote.
+  function mockLines(rows: Array<Record<string, string>>) {
+    dbMock.execute.mockResolvedValueOnce({ rows }).mockResolvedValueOnce({ rows: [] });
+  }
+
+  // The first three values sent in the UPDATE (the second call).
+  function savedTotals() {
+    const updateCall = dbMock.execute.mock.calls[1][0];
+    return dialect.sqlToQuery(updateCall).params.slice(0, 3);
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('adds 15% VAT to the saved line totals', async () => {
+    mockLines([{ total: '200.00' }]);
+
+    await recalculateQuoteTotals('tenant-1', 'quote-1');
+
+    expect(savedTotals()).toEqual(['200', '30', '230']);
+  });
+
+  it.fails('BUG: saves unrounded values (R0.10 + R0.20)', async () => {
+    mockLines([{ total: '0.10' }, { total: '0.20' }]);
+
+    await recalculateQuoteTotals('tenant-1', 'quote-1');
+
+    expect(savedTotals()[0]).toBe('0.30');
+  });
+
+  it.fails('BUG: ignores the line discount (should save R218.50)', async () => {
+    mockLines([
+      { discount: '10.00', quantity: '2', tax_rate: '15', total: '200.00', unit_price: '100.00' },
+    ]);
+
+    await recalculateQuoteTotals('tenant-1', 'quote-1');
+
+    expect(savedTotals()).toContain('218.50');
+  });
+
+  it.fails('BUG: charges 15% on a 0% VAT line', async () => {
+    mockLines([
+      { discount: '0', quantity: '1', tax_rate: '0', total: '100.00', unit_price: '100.00' },
+    ]);
+
+    await recalculateQuoteTotals('tenant-1', 'quote-1');
+
+    expect(savedTotals()).toEqual(['100.00', '0.00', '0.00']);
   });
 });
