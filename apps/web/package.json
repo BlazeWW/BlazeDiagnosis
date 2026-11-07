@@ -20,6 +20,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@blaze-diagnostics/shared": "workspace:*",
     "@hookform/resolvers": "latest",
     "@radix-ui/react-label": "latest",
     "@radix-ui/react-slot": "latest",
