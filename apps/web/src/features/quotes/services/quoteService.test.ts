@@ -1,3 +1,4 @@
+import { calculateQuoteTotals } from '@/lib/quoteTotals';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -229,4 +230,50 @@ describe('BD-025: approval effects on quote totals', () => {
     // quote total still includes the declined line. Question 5 asks if that's intended.
     expect(dbMock.execute).toHaveBeenCalledTimes(5);
   });
+});
+
+describe('BD-025: screen and server totals agree', () => {
+  const dialect = new PgDialect();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it.fails(
+    'BUG: the server saves a different total than the screen shows',
+    async () => {
+      const onScreen = calculateQuoteTotals([
+        {
+          approvalRequirement: 'recommended',
+          category: 'part',
+          description: 'Brake pads',
+          discount: 10,
+          id: 'line-1',
+          quantity: 2,
+          taxRate: 15,
+          unitPrice: 100,
+        },
+      ]);
+      expect(onScreen.total).toBe(218.5);
+
+      dbMock.execute
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              discount: '10.00',
+              quantity: '2',
+              tax_rate: '15',
+              total: '200.00',
+              unit_price: '100.00',
+            },
+          ],
+        })
+        .mockResolvedValueOnce({ rows: [] });
+
+      await recalculateQuoteTotals('tenant-1', 'quote-1');
+
+      const saved = dialect.sqlToQuery(dbMock.execute.mock.calls[1][0]).params;
+      expect(saved).toContain('218.50');
+    },
+  );
 });
