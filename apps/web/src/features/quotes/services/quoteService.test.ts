@@ -1,5 +1,5 @@
+import { PgDialect } from 'drizzle-orm/pg-core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { PgDialect } from 'drizzle-orm/pg-core'
 
 const authGuardMock = vi.hoisted(() => ({
   requireTenantPermission: vi.fn(),
@@ -14,10 +14,11 @@ vi.mock('@/db/client', () => ({ db: dbMock }));
 import {
   addQuoteLineItem,
   createQuoteFromJobCard,
+  declineQuoteLineItem,
   getQuoteWithItems,
   lockApprovedQuote,
+  recalculateQuoteTotals,
   sendQuoteToCustomer,
-  recalculateQuoteTotals
 } from './quoteService';
 
 describe('quoteService', () => {
@@ -27,13 +28,18 @@ describe('quoteService', () => {
   });
 
   it('creates a draft quote from a job card', async () => {
-    dbMock.execute.mockResolvedValueOnce({ rows: [{ id: 'quote-1', status: 'draft' }] });
+    dbMock.execute.mockResolvedValueOnce({
+      rows: [{ id: 'quote-1', status: 'draft' }],
+    });
 
     await expect(
       createQuoteFromJobCard('tenant-1', 'job-1', 'customer-1'),
     ).resolves.toMatchObject({ id: 'quote-1' });
 
-    expect(authGuardMock.requireTenantPermission).toHaveBeenCalledWith('tenant-1', 'quotes.create');
+    expect(authGuardMock.requireTenantPermission).toHaveBeenCalledWith(
+      'tenant-1',
+      'quotes.create',
+    );
     expect(dbMock.execute).toHaveBeenCalledTimes(1);
   });
 
@@ -87,7 +93,9 @@ describe('quoteService', () => {
       .mockResolvedValueOnce({ rows: [{ approval_status: 'approved' }] })
       .mockResolvedValueOnce({ rows: [{ id: 'quote-1', status: 'locked' }] });
 
-    await expect(lockApprovedQuote('tenant-1', 'quote-1')).resolves.toMatchObject({
+    await expect(
+      lockApprovedQuote('tenant-1', 'quote-1'),
+    ).resolves.toMatchObject({
       id: 'quote-1',
       status: 'locked',
     });
@@ -99,7 +107,9 @@ describe('BD-025: recalculateQuoteTotals', () => {
 
   // The function makes two database calls: SELECT the lines, then UPDATE the quote.
   function mockLines(rows: Array<Record<string, string>>) {
-    dbMock.execute.mockResolvedValueOnce({ rows }).mockResolvedValueOnce({ rows: [] });
+    dbMock.execute
+      .mockResolvedValueOnce({ rows })
+      .mockResolvedValueOnce({ rows: [] });
   }
 
   // The first three values sent in the UPDATE (the second call).
@@ -130,7 +140,13 @@ describe('BD-025: recalculateQuoteTotals', () => {
 
   it.fails('BUG: ignores the line discount (should save R218.50)', async () => {
     mockLines([
-      { discount: '10.00', quantity: '2', tax_rate: '15', total: '200.00', unit_price: '100.00' },
+      {
+        discount: '10.00',
+        quantity: '2',
+        tax_rate: '15',
+        total: '200.00',
+        unit_price: '100.00',
+      },
     ]);
 
     await recalculateQuoteTotals('tenant-1', 'quote-1');
@@ -140,11 +156,77 @@ describe('BD-025: recalculateQuoteTotals', () => {
 
   it.fails('BUG: charges 15% on a 0% VAT line', async () => {
     mockLines([
-      { discount: '0', quantity: '1', tax_rate: '0', total: '100.00', unit_price: '100.00' },
+      {
+        discount: '0',
+        quantity: '1',
+        tax_rate: '0',
+        total: '100.00',
+        unit_price: '100.00',
+      },
     ]);
 
     await recalculateQuoteTotals('tenant-1', 'quote-1');
 
     expect(savedTotals()).toEqual(['100.00', '0.00', '0.00']);
+  });
+});
+
+describe('BD-025: approval effects on quote totals', () => {
+  const dialect = new PgDialect();
+
+  // recordQuoteLineDecision makes five calls: read the quote, update the line,
+  // record the approval event, read every line's status, update the quote status.
+  function mockDecline() {
+    dbMock.execute
+      .mockResolvedValueOnce({
+        rows: [{ customer_id: 'customer-1', locked_at: null, status: 'sent' }],
+      })
+      .mockResolvedValueOnce({
+        rows: [{ approval_status: 'declined', id: 'line-2' }],
+      })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          { approval_status: 'approved' },
+          { approval_status: 'declined' },
+        ],
+      })
+      .mockResolvedValueOnce({ rows: [] });
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authGuardMock.requireTenantPermission.mockResolvedValue(undefined);
+  });
+
+  it('marks the quote partially approved when one of two lines is declined', async () => {
+    mockDecline();
+
+    await declineQuoteLineItem(
+      'tenant-1',
+      'quote-1',
+      'line-2',
+      'customer-1',
+      'Too expensive',
+    );
+
+    const statusUpdate = dialect.sqlToQuery(dbMock.execute.mock.calls[4][0]);
+    expect(statusUpdate.params[0]).toBe('partially_approved');
+  });
+
+  it('does not recalculate the quote total after a decline (finding 5)', async () => {
+    mockDecline();
+
+    await declineQuoteLineItem(
+      'tenant-1',
+      'quote-1',
+      'line-2',
+      'customer-1',
+      'Too expensive',
+    );
+
+    // Exactly the five calls above; none recalculates totals, so the saved
+    // quote total still includes the declined line. Question 5 asks if that's intended.
+    expect(dbMock.execute).toHaveBeenCalledTimes(5);
   });
 });
