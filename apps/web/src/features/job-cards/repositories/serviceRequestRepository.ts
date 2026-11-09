@@ -8,6 +8,11 @@ export interface ServiceRequestRepository {
     tenantId: string,
     input: CreateServiceRequestInputDto,
   ): Promise<CreateServiceRequestResponseDto>;
+  list(tenantId: string): Promise<CreateServiceRequestResponseDto[]>;
+  getById(
+    tenantId: string,
+    serviceRequestId: string,
+  ): Promise<CreateServiceRequestResponseDto | null>;
 }
 
 export class ServiceRequestRelationshipValidationError extends Error {

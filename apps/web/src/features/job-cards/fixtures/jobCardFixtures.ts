@@ -3,6 +3,7 @@ export type CustomerFixture = {
   tenantId: string;
   firstName: string;
   lastName: string;
+  isArchived: boolean;
 };
 
 export type VehicleFixture = {
@@ -12,6 +13,20 @@ export type VehicleFixture = {
   make: string;
   model: string;
   registrationNumber: string;
+  isArchived: boolean;
+};
+
+export type ServiceRequestFixture = {
+  id: string;
+  tenantId: string;
+  customerId: string;
+  vehicleId: string;
+  requestedService: string;
+  customerConcern?: string;
+  preferredDate?: string;
+  status: 'received';
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type JobCardFixture = {
@@ -34,12 +49,14 @@ export const customerFixtures: CustomerFixture[] = [
     tenantId: jobCardFixtureTenantIds.northside,
     firstName: 'Lerato',
     lastName: 'Mokoena',
+    isArchived: false,
   },
   {
     id: '22222222-2222-4222-8222-222222222222',
     tenantId: jobCardFixtureTenantIds.southside,
     firstName: 'Thabo',
     lastName: 'Naidoo',
+    isArchived: false,
   },
 ];
 
@@ -51,6 +68,7 @@ export const vehicleFixtures: VehicleFixture[] = [
     make: 'Toyota',
     model: 'Corolla',
     registrationNumber: 'CA 123-456',
+    isArchived: false,
   },
   {
     id: '44444444-4444-4444-8444-444444444444',
@@ -59,8 +77,11 @@ export const vehicleFixtures: VehicleFixture[] = [
     make: 'Volkswagen',
     model: 'Polo',
     registrationNumber: 'GP 789-012',
+    isArchived: false,
   },
 ];
+
+export const serviceRequestFixtures: ServiceRequestFixture[] = [];
 
 export const jobCardFixtures: JobCardFixture[] = [
   {
