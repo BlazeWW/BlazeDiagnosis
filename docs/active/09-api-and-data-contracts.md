@@ -46,6 +46,9 @@ Failure:
 - [ ] `/api/quotes`
 - [ ] `/api/parts-requests`
 - [ ] `/api/supplier-responses`
+- [ ] `/api/parts-orders`
+- [ ] `/api/parts-orders/[id]`
+- [ ] `/api/parts-orders/[id]/transitions`
 - [ ] `/api/tenant-branding`
 
 ## Temporary aliases to remove later
@@ -67,5 +70,6 @@ Failure:
 - [ ] Invoice DTO.
 - [ ] Parts request DTO.
 - [ ] Supplier response DTO.
+- [ ] Purchase order DTO. See `docs/active/purchase-order-lifecycle.md`.
 - [ ] Tenant branding DTO.
 - [ ] Audit event DTO.
