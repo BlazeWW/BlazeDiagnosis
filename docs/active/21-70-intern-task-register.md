@@ -212,6 +212,7 @@ Each entry is one GitHub issue and starts against typed mocks and fixtures; inte
 
 ### BD-034 — Purchase order lifecycle (Y2; P1)
 - **Delivery:** Implement order changes and audit history.
+- **Lifecycle:** Transition matrix, role checks, and audit records are documented in `docs/active/purchase-order-lifecycle.md`.
 - **Independence:** Use fixed DTO contracts plus local fixtures and mock adapter; no sibling task is a prerequisite to start.
 - **Acceptance:** Demonstrate the feature or verified audit; add relevant tests including rejection/tenant cases; pass lint/typecheck/test/build, provide evidence and update affected docs.
 - **Ownership:** One intern; reviewed PR and issue linked by ID.
