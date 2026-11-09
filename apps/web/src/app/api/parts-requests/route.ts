@@ -9,6 +9,7 @@ import {
   handleApiError,
 } from '@/lib/api/response';
 import { requireTenantContext } from '@/lib/tenancy/tenantContext';
+import { TenantAccessError } from '@/lib/authorization/guards';
 
 const routeName = '/api/parts-requests';
 
@@ -30,7 +31,13 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const tenant = await requireTenantContext();
-    const input = createPartsCatalogSchema.parse(await request.json());
+    const rawBody = await request.json();
+
+    if (rawBody.tenantId && rawBody.tenantId !== tenant.tenantId) {
+      throw new TenantAccessError('Submitted tenant ID conflicts with authenticated session tenant.');
+    }
+    
+    const input = createPartsCatalogSchema.parse(rawBody);
 
     const [newPart] = await db
       .insert(parts)

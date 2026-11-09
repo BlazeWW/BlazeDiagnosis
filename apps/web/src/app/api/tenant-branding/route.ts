@@ -4,6 +4,7 @@ import {
   updateTenantBrandingConfig,
 } from '@/features/tenants/services/tenantService';
 import { apiOk, handleApiError } from '@/lib/api/response';
+import { TenantAccessError } from '@/lib/authorization/guards';
 import { requireTenantContext } from '@/lib/tenancy/tenantContext';
 
 const routeName = '/api/tenant-branding';
@@ -22,7 +23,13 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const tenant = await requireTenantContext();
-    const input = tenantBrandingSchema.parse(await request.json());
+    const rawBody = await request.json();
+
+    if (rawBody.tenantId && rawBody.tenantId !== tenant.tenantId) {
+      throw new TenantAccessError('Submitted tenant ID conflicts with authenticated session tenant.');
+    }
+
+    const input = tenantBrandingSchema.parse(rawBody);
     const branding = await updateTenantBrandingConfig(tenant.tenantId, input);
 
     return apiOk({ branding });

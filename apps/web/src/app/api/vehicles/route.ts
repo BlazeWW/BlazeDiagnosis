@@ -6,6 +6,7 @@ import { createVehicleSchema } from '@/features/vehicles/schemas/vehicleSchema';
 import { createVehicle } from '@/features/vehicles/services/vehicleService';
 import { apiCreated, apiOk, handleApiError } from '@/lib/api/response';
 import { requireTenantContext } from '@/lib/tenancy/tenantContext';
+import { TenantAccessError } from '@/lib/authorization/guards';
 
 const routeName = '/api/vehicles';
 
@@ -31,7 +32,13 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const tenant = await requireTenantContext();
-    const input = createVehicleSchema.parse(await request.json());
+    const rawBody = await request.json();
+
+    if (rawBody.tenantId && rawBody.tenantId !== tenant.tenantId) {
+      throw new TenantAccessError('Submitted tenant ID conflicts with authenticated session tenant.');
+    }
+
+    const input = createVehicleSchema.parse(rawBody);
     const vehicle = await createVehicle(tenant.tenantId, input);
 
     return apiCreated({ vehicle });
