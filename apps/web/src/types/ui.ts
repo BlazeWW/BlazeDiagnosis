@@ -30,6 +30,20 @@ export type EmptyStateProps = {
   title: string;
 };
 
+export type LoadingStateProps = {
+  className?: string;
+  description?: string;
+  title?: string;
+};
+
+export type ErrorStateProps = {
+  className?: string;
+  description: string;
+  onRetry: () => void;
+  retryLabel?: string;
+  title?: string;
+};
+
 export type ResponsiveTableProps = HTMLAttributes<HTMLDivElement> & {
   children: ReactNode;
 };
