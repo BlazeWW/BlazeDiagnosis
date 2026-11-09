@@ -1,0 +1,183 @@
+<!-- this a prototype the word item need to be changed (Henre meintjes) -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quote Approval</title>
+
+<style>
+*   {
+        box-sizing: border-box;
+        font-family: Arial, sans-serif;
+}
+
+body {
+        background: #f4f4f4;
+        margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+}
+
+        h1 {
+            color: #1f4e79;
+}
+
+    .quote-item {
+        border: 1px solid #ddd;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 8px;
+}
+
+    .cost {
+        font-weight: bold;
+        color: green;
+}
+
+    .radio-group {
+        margin-top: 10px;
+}
+
+    .total {
+        font-size: 24px;
+        font-weight: bold;
+        color: #1f4e79;
+        margin-top: 20px;
+}
+
+    button {
+        width: 100%;
+        padding: 12px;
+        background: #1f4e79;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+    }
+
+button:hover {
+    background: #163a5a;
+}
+
+#message {
+    margin-top: 15px;
+    font-weight: bold;
+}
+
+@media (max-width: 600px) {
+    .container {
+        padding: 15px;
+    }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+    <h1>Quote Approval</h1>
+    <p><strong>Quote ID:</strong> Q001</p>
+
+    <div class="quote-item">
+        <h3>add item</h3>
+        <p class="cost">add price</p>
+
+        <div class="radio-group">
+            <label>
+                <input type="radio" name="item" value="Approved">
+                Approve
+            </label>
+
+            <label>
+                <input type="radio" name="item" value="Declined">
+                Decline
+            </label>
+        </div>
+    </div>
+
+    <div class="quote-item">
+        <h3>add item</h3>
+        <p class="cost">add price</p>
+
+        <div class="radio-group">
+            <label>
+                <input type="radio" name="warranty" value="Approved">
+                Approve
+            </label>
+
+            <label>
+                <input type="radio" name="warranty" value="Declined">
+                Decline
+            </label>
+        </div>
+    </div>
+
+    <div class="total">
+        picce
+    </div>
+
+    <br>
+
+    <button onclick="submitQuote()">
+        Confirm Decisions
+    </button>
+
+    <div id="message"></div>
+
+</div>
+
+<script>
+    function submitQuote() {
+
+            const item =
+            document.querySelector('input[name="item"]:checked');
+
+        const warranty =
+        document.querySelector('input[name="warranty"]:checked');
+
+        if (!item || !warranty) {
+        document.getElementById("message").innerHTML =
+            "Please make a decision for all items.";
+        document.getElementById("message").style.color = "red";
+        return;
+        }
+
+        const quoteStatus = "valid";
+
+        if (quoteStatus === "expired") {
+        document.getElementById("message").innerHTML =
+            "This quote has expired.";
+        document.getElementById("message").style.color = "red";
+        return;
+    }
+
+        if (quoteStatus === "unauthorized") {
+        document.getElementById("message").innerHTML =
+            "You are not authorized to review this quote.";
+        document.getElementById("message").style.color = "red";
+        return;
+    }
+
+        document.getElementById("message").innerHTML =
+    `
+    Item: ${item.value}<br>
+    Warranty: ${warranty.value}<br><br>
+    Quote submitted successfully!
+    `;
+
+    document.getElementById("message").style.color = "green";
+}
+</script>
+
+</body>
+</html>
