@@ -1,5 +1,5 @@
 import type { Route } from 'next';
-
+import type { InspectionFinding } from '@/types/workflow';
 import type { FeatureChecklistItem, FeatureMetric, FeatureRecord } from '@/types/featureDashboard';
 import type { StatusTone } from '@/types/ui';
 
@@ -438,5 +438,25 @@ export const stationInvoiceRows = [
     statusTone: 'success' as StatusTone,
     totalCents: 139995,
     vehicle: 'Ford Ranger 2.2 TDCi',
+  },
+];
+export const stationInspectionFindings: InspectionFinding[] = [
+  {
+    id: 'finding-001',
+    title: 'Tyre condition',
+    description: 'Tyres show normal wear for their current use.',
+    severity: 'normal',
+  },
+  {
+    id: 'finding-002',
+    title: 'Brake pads',
+    description: 'Brake pads should be checked and replaced if necessary.',
+    severity: 'advisory',
+  },
+  {
+    id: 'finding-003',
+    title: 'Brake system',
+    description: 'Potential brake system issue requiring urgent attention.',
+    severity: 'critical',
   },
 ];

@@ -14,6 +14,23 @@ export const customerStatuses = [
 
 export type CustomerStatus = (typeof customerStatuses)[number];
 
+
+export const defectSeverities = [
+  'normal',
+  'advisory',
+  'critical',
+] as const;
+
+export type DefectSeverity = (typeof defectSeverities)[number];
+
+export type InspectionFinding = {
+  id: string;
+  title: string;
+  description: string;
+  severity: DefectSeverity;
+};
+
+
 export const internalStatuses = [
   'request_received',
   'vehicle_received',

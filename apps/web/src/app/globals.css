@@ -138,3 +138,50 @@ body {
     radial-gradient(circle at bottom right, rgb(56 189 248 / 9%), transparent 30rem),
     var(--background);
 }
+
+
+.defect-severity {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.defect-severity--normal {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.defect-severity--advisory {
+  color: #854d0e;
+  background: #fef3c7;
+}
+
+.defect-severity--critical {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.dark .defect-severity--normal {
+  color: #bbf7d0;
+  background: #14532d;
+}
+
+.dark .defect-severity--advisory {
+  color: #fde68a;
+  background: #78350f;
+}
+
+.dark .defect-severity--critical {
+  color: #fecaca;
+  background: #7f1d1d;
+}
+
+.defect-severity--unknown {
+  color: #374151;
+  background: #e5e7eb;
+}

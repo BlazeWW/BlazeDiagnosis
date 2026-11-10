@@ -1,3 +1,4 @@
+
 import type { Route } from 'next';
 import Link from 'next/link';
 import { PlusCircle } from 'lucide-react';
@@ -8,8 +9,13 @@ import {
   FeatureMetricGrid,
   FeatureRecordList,
 } from '@/components/common/featureDashboard';
+import { DefectSeverityBadge } from '@/components/data-display/defectSeverityBadge';
 import { Button } from '@/components/ui/button';
-import { stationChecklist, stationJobRecords } from '@/lib/sampleWorkflows';
+import {
+  stationChecklist,
+  stationInspectionFindings,
+  stationJobRecords,
+} from '@/lib/sampleWorkflows';
 
 export default function StationJobCardsPage() {
   return (
@@ -28,10 +34,26 @@ export default function StationJobCardsPage() {
     >
       <FeatureMetricGrid
         items={[
-          { description: 'All active workshop jobs', label: 'Open jobs', value: '18' },
-          { description: 'No mechanic assigned yet', label: 'Unassigned', value: '3' },
-          { description: 'Parts or customer blockers', label: 'Blocked', value: '5' },
-          { description: 'Ready for final review', label: 'Ready for QC', value: '4' },
+          {
+            description: 'All active workshop jobs',
+            label: 'Open jobs',
+            value: '18',
+          },
+          {
+            description: 'No mechanic assigned yet',
+            label: 'Unassigned',
+            value: '3',
+          },
+          {
+            description: 'Parts or customer blockers',
+            label: 'Blocked',
+            value: '5',
+          },
+          {
+            description: 'Ready for final review',
+            label: 'Ready for QC',
+            value: '4',
+          },
         ]}
       />
 
@@ -40,6 +62,37 @@ export default function StationJobCardsPage() {
         items={stationJobRecords}
         title="Workshop action queue"
       />
+
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">
+            Inspection findings
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Example findings showing the available severity classifications.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          {stationInspectionFindings.map((finding) => (
+            <div
+              className="space-y-2 rounded-xl border border-border bg-card p-4"
+              key={finding.id}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="font-semibold text-foreground">
+                  {finding.title}
+                </h3>
+                <DefectSeverityBadge severity={finding.severity} />
+              </div>
+
+              <p className="text-sm text-muted-foreground">
+                {finding.description}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <FeatureChecklist
         description="These checks define the next production implementation work for job cards."
