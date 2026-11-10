@@ -25,7 +25,9 @@ export async function createServiceRequest(
       vehicleId: input.vehicleId,
       requestedService: input.requestedService,
       customerConcern: input.customerConcern,
-      preferredDate: input.preferredDate,
+      preferredDate: input.preferredDate
+        ? new Date(input.preferredDate)
+        : undefined,
       status: 'received',
     })
     .returning();
