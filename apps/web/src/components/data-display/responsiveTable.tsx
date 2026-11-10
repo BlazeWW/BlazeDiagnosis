@@ -10,12 +10,14 @@ export function ResponsiveTable({
   return (
     <div
       className={cn(
-        'w-full overflow-x-auto rounded-xl border border-border bg-card',
+        'w-full overflow-x-auto rounded-xl border border-border bg-card p-px',
         className,
       )}
+      role="region"
+      aria-label="Responsive data table"
       {...props}
     >
-      <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+      <table className="w-full min-w-180 border-collapse text-left text-sm">
         {children}
       </table>
     </div>
