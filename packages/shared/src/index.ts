@@ -13,7 +13,7 @@ export type CreateServiceRequestResponseDto = {
   requestedService: string;
   customerConcern?: string;
   preferredDate?: string;
-  status: 'received';
+  status: 'draft' | 'received' | 'converted' | 'cancelled';
   createdAt: string;
   updatedAt: string;
 };

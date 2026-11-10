@@ -3,7 +3,7 @@
 **Priority:** P0  
 **Year:** Y2  
 **Owner:** One intern  
-**Status:** Planned  
+**Status:** Stage 3 implemented; production service/API wiring remains
 **Issue:** BD-015 (link the reviewed PR to the GitHub issue ID when the issue is available)
 
 ## Objective
@@ -79,6 +79,10 @@ The mock must apply the same tenant and relationship rules as the database imple
 **Exit check:** Mock adapter tests prove valid creation/retrieval, rejection of mismatched relationships, and isolation of records between tenants.
 
 ### Stage 3 — Implement database persistence
+
+The database adapter is implemented in
+`apps/web/src/features/job-cards/repositories/databaseServiceRequestRepository.ts`.
+It is not wired into the production service/API path; that is Stage 4.
 
 1. Add a database repository behind the same interface.
 2. Within a transaction, verify the active customer and vehicle using both entity ID and tenant ID, and verify that the vehicle belongs to the selected customer.
