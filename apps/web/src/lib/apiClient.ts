@@ -1,5 +1,6 @@
 import type { ApiResponse } from '@/types/api';
 import type { Customer } from '@/types/customers';
+import { EligibleStaffMember, JobCardRecord } from '@/types/jobCards';
 import type { VehicleRecord } from '@/types/vehicles';
 
 type RequestOptions = RequestInit & {
@@ -40,11 +41,13 @@ export async function fetchCustomerById(customerId: string) {
 }
 
 export async function fetchVehiclesForCustomer(customerId: string) {
-  return requestJson<{ vehicles: unknown[] }>(`/api/vehicles/customer/${customerId}`, {
-    errorMessage: 'Failed to fetch customer vehicles.',
-  });
+  return requestJson<{ vehicles: unknown[] }>(
+    `/api/vehicles/customer/${customerId}`,
+    {
+      errorMessage: 'Failed to fetch customer vehicles.',
+    },
+  );
 }
-
 
 export async function fetchCustomerIntakeHistory(customerId: string) {
   return requestJson<{ intakes: VehicleRecord[] }>(
@@ -73,7 +76,6 @@ export async function createVehicle(vehicleData: unknown) {
   });
 }
 
-
 export async function createCustomer(customerData: unknown) {
   const data = await requestJson<{ customer: Customer }>(`/api/customers`, {
     method: 'POST',
@@ -86,13 +88,19 @@ export async function createCustomer(customerData: unknown) {
 }
 
 // Form Submission: Update an existing customer profile record
-export async function updateCustomer(customerId: string, customerData: unknown) {
-  const data = await requestJson<{ customer: Customer }>(`/api/customers/${customerId}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(customerData),
-    errorMessage: 'Failed to update customer profile data.',
-  });
+export async function updateCustomer(
+  customerId: string,
+  customerData: unknown,
+) {
+  const data = await requestJson<{ customer: Customer }>(
+    `/api/customers/${customerId}`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(customerData),
+      errorMessage: 'Failed to update customer profile data.',
+    },
+  );
 
   return data.customer;
 }
@@ -107,15 +115,49 @@ export async function updateVehicle(vehicleId: string, vehicleData: unknown) {
 }
 
 export async function deleteCustomer(customerId: string) {
-  return requestJson<{ id: string; message: string }>(`/api/customers/${customerId}`, {
-    method: 'DELETE',
-    errorMessage: 'Failed to delete customer.',
-  });
+  return requestJson<{ id: string; message: string }>(
+    `/api/customers/${customerId}`,
+    {
+      method: 'DELETE',
+      errorMessage: 'Failed to delete customer.',
+    },
+  );
 }
 
 export async function deleteVehicle(vehicleId: string) {
-  return requestJson<{ id: string; message: string }>(`/api/vehicles/${vehicleId}`, {
-    method: 'DELETE',
-    errorMessage: 'Failed to delete vehicle.',
+  return requestJson<{ id: string; message: string }>(
+    `/api/vehicles/${vehicleId}`,
+    {
+      method: 'DELETE',
+      errorMessage: 'Failed to delete vehicle.',
+    },
+  );
+}
+
+//Job Cards
+export async function fetchJobCards() {
+  return requestJson<{ jobCards: JobCardRecord[] }>(`/api/job-cards`, {
+    errorMessage: 'Failed to fetch job cards.',
   });
+}
+
+export async function fetchEligibleStaff() {
+  return requestJson<{ staff: EligibleStaffMember[] }>('/api/job-cards/staff', {
+    errorMessage: 'Failed to load staff members.',
+  });
+}
+
+export async function assignJobStaff(
+  jobCardId: string,
+  assignments: { mechanicId?: string | null; floorManagerId?: string | null },
+) {
+  return requestJson<{ jobCard: JobCardRecord }>(
+    `/api/job-cards/${jobCardId}/staff`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(assignments),
+      errorMessage: 'Failed to save assignment.',
+    },
+  );
 }
