@@ -75,19 +75,23 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+        {/* Formats a perfectly balanced 2x2 grid layout block */}
+        <div className="mx-auto grid w-full max-w-xl gap-4 grid-cols-2">
           {capabilities.map((item) => {
             const Icon = item.icon;
 
             return (
-              <Card className="bg-muted/40" key={item.label}>
-                <CardContent className="flex items-center gap-3 p-4">
-                  <span className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                    <Icon className="size-5" />
-                  </span>
-                  <span className="text-sm font-semibold text-foreground">{item.label}</span>
-                </CardContent>
-              </Card>
+              <div 
+                className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border/80 bg-muted/40 p-6 text-center min-h-[9rem] transition-colors" 
+                key={item.label}
+              >
+                <span className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shrink-0">
+                  <Icon className="size-5" />
+                </span>
+                <span className="text-sm font-semibold text-foreground tracking-tight max-w-[160px]">
+                  {item.label}
+                </span>
+              </div>
             );
           })}
         </div>
