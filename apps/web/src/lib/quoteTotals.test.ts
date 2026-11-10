@@ -181,8 +181,7 @@ describe('BD-025: rounding and edge cases', () => {
     });
   });
 
-  // Known bug (BD-025): 4.015 is stored as 4.01499..., so it rounds down.
-  it.fails('BUG: rounds half a cent up (0.5 x R8.03 = R4.015 -> R4.02)', () => {
+  it('rounds half a cent up (0.5 x R8.03 = R4.015 -> R4.02)', () => {
     expect(
       calculateQuoteLineTotals({
         ...baseLineItem,
@@ -193,8 +192,7 @@ describe('BD-025: rounding and edge cases', () => {
     ).toBe(4.02);
   });
 
-  // Known bug (BD-025): 1.005 is stored as 1.00499..., so it rounds down.
-  it.fails('BUG: rounds half a cent up (0.5 x R2.01 = R1.005 -> R1.01)', () => {
+  it('rounds half a cent up (0.5 x R2.01 = R1.005 -> R1.01)', () => {
     expect(
       calculateQuoteLineTotals({
         ...baseLineItem,
