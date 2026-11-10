@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2, Save, Send } from "lucide-react";
+import { calculateDocumentTotals, calculateLineCents, centsToString, DEFAULT_VAT_RATE } from "@/lib/money/cents";
 
 // Updated type to match the database enum
 type QuoteLineItemType = "part" | "labor" | "diagnostic" | "consumable" | "optional_service";
@@ -60,7 +61,7 @@ export function QuoteBuilder() {
         if (item.id === id) {
           const updated = { ...item, [field]: value };
           if (field === "quantity" || field === "unitPrice") {
-            updated.total = updated.quantity * updated.unitPrice;
+            updated.total = calculateLineCents({ quantity: updated.quantity, unitPrice: updated.unitPrice }).subtotal / 100;
           }
           return updated;
         }
@@ -69,9 +70,13 @@ export function QuoteBuilder() {
     );
   };
 
-  const calculateTotal = () => {
-    return lineItems.reduce((sum, item) => sum + item.total, 0);
-  };
+  const totals = calculateDocumentTotals(
+    lineItems.map((item) => ({
+      quantity: item.quantity,
+      taxRate: DEFAULT_VAT_RATE,
+      unitPrice: item.unitPrice,
+    })),
+  );
 
 const handleSaveDraft = async () => {
   if (!jobCardId || !customerId) {
@@ -228,15 +233,15 @@ const handleSaveDraft = async () => {
           <div className="space-y-4">
             <div className="flex justify-between">
               <span>Subtotal:</span>
-              <span className="font-medium">R {calculateTotal().toFixed(2)}</span>
+              <span className="font-medium">R {centsToString(totals.subtotal)}</span>
             </div>
             <div className="flex justify-between">
               <span>Tax (15%):</span>
-              <span className="font-medium">R {(calculateTotal() * 0.15).toFixed(2)}</span>
+              <span className="font-medium">R {centsToString(totals.taxTotal)}</span>
             </div>
             <div className="flex justify-between border-t pt-4">
               <span className="font-bold">Total:</span>
-              <span className="font-bold text-xl">R {(calculateTotal() * 1.15).toFixed(2)}</span>
+              <span className="font-bold text-xl">R {centsToString(totals.total)}</span>
             </div>
             <div className="space-y-2 pt-4">
               <Button 
