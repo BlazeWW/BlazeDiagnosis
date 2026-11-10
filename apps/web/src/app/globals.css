@@ -138,3 +138,34 @@ body {
     radial-gradient(circle at bottom right, rgb(56 189 248 / 9%), transparent 30rem),
     var(--background);
 }
+
+/* Fix low-contrast placeholder initials inside legacy feature dashboard panels */
+span.bg-white\/15,
+span[class*="bg-white/15"] {
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+
+span.bg-white\/15 *,
+span[class*="bg-white/15"] * {
+  color: var(--primary-foreground) !important;
+  font-weight: 800 !important;
+}
+
+/* Force hidden layout text elements inside the preview cards to be cleanly visible */
+.border-border\/70.bg-card\/75 p,
+.border-border\/70.bg-card\/75 span:not(.bg-white\/15),
+.border-border\/70.bg-card\/75 h3,
+.border-border\/70.bg-card\/75 h4,
+.border-border\/70.bg-card\/75 div:not(.bg-white\/15) {
+  color: var(--foreground) !important;
+}
+
+/* Maintain soft-contrast text on specific summary labels */
+.border-border\/70.bg-card\/75 .text-muted-foreground,
+.border-border\/70.bg-card\/75 p[class*="text-muted"] {
+  color: var(--muted-foreground) !important;
+}
+
+
+
