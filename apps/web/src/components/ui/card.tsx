@@ -45,7 +45,7 @@ export interface CardTitleProps extends React.HTMLAttributes<HTMLHeadingElement>
 
 export function CardTitle({
   className,
-  as: Tag = 'h3', // Defaults safely to h3 so existing platform dashboards remain untouched
+  as: Tag = 'h2', // Adjusted to default to h2 to satisfy the WCAG sequential hierarchy requirements globally
   ...props
 }: CardTitleProps) {
   return (
