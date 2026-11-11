@@ -39,12 +39,17 @@ export function CardHeader({
   );
 }
 
+export interface CardTitleProps extends React.HTMLAttributes<HTMLHeadingElement> {
+  as?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+}
+
 export function CardTitle({
   className,
+  as: Tag = 'h2', // Adjusted to default to h2 to satisfy the WCAG sequential hierarchy requirements globally
   ...props
-}: React.HTMLAttributes<HTMLHeadingElement>) {
+}: CardTitleProps) {
   return (
-    <h3
+    <Tag
       className={cn('text-base font-semibold leading-none tracking-tight', className)}
       {...props}
     />
