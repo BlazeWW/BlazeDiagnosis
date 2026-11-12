@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  CUSTOMER_CONCERN_MAX_LENGTH,
   createServiceRequestSchema,
+  CUSTOMER_CONCERN_MAX_LENGTH,
   SERVICE_DESCRIPTION_MAX_LENGTH,
 } from './jobCardSchema';
 
@@ -22,20 +22,29 @@ describe('createServiceRequestSchema', () => {
     expect(result.preferredDate).toBe('2026-11-02T10:00:00.000Z');
   });
 
-  it('rejects unknown fields such as tenantId', () => {
+  it.each([
+    { tenantId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' },
+    { unknownField: true },
+  ])('rejects unknown fields such as tenantId', (unknownFields) => {
     expect(
       createServiceRequestSchema.safeParse({
         ...validPayload,
-        tenantId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        ...unknownFields,
       }).success,
     ).toBe(false);
   });
 
-  it('rejects invalid UUIDs and text beyond the configured bounds', () => {
+  it('rejects invalid customer/vehicle UUIDs and text beyond configured bounds', () => {
     expect(
       createServiceRequestSchema.safeParse({
         ...validPayload,
         customerId: 'not-a-uuid',
+      }).success,
+    ).toBe(false);
+    expect(
+      createServiceRequestSchema.safeParse({
+        ...validPayload,
+        vehicleId: 'not-a-uuid',
       }).success,
     ).toBe(false);
     expect(

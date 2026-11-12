@@ -1,6 +1,6 @@
 # Current Application State After Layout and Build Fixes
 
-_Last updated: 2026-07-01_
+_Last updated: 2026-11-12_
 
 ## Purpose
 
@@ -62,6 +62,19 @@ Blaze Diagnostics is now past a pure MVP prototype, but it is not production-rea
 - [x] Branding settings page.
 - [x] Showcase/demo page.
 
+## Confirmed job-card persistence behavior
+
+- [x] Tenant-scoped `POST /api/job-cards`, `GET /api/job-cards`, and
+      `GET /api/job-cards/[id]` routes are implemented and covered by tests using
+      the local fixture adapter.
+- [x] The focused job-card suite passes: 6 test files, 30 tests.
+- [ ] The station job-card page still uses demo data and is not integrated with
+      the persistence API; status transitions, assignment, and timeline are also
+      separate follow-up work.
+- [ ] No disposable-database test setup is established in the repository.
+      Transaction failure is covered with a mocked Drizzle transaction, not a live
+      database rollback test.
+
 ### Supplier area
 
 - [x] Supplier dashboard.
@@ -86,7 +99,7 @@ These items must be addressed before production or paid pilot usage.
 
 - [ ] Replace mock/session fallback authentication with production auth.
 - [ ] Remove or strictly gate any demo/localStorage workflows.
-- [ ] Connect customer, vehicle, job card, quote, invoice, supplier, delivery, and message pages to database-backed services.
+- [ ] Connect remaining customer, vehicle, job card, quote, invoice, supplier, delivery, and message pages to database-backed services; job-card persistence endpoints exist, but the station page remains demo-backed.
 - [ ] Enforce tenant authorization on every tenant-owned read and mutation.
 - [ ] Remove temporary singular alias API routes after frontend migration.
 - [ ] Add automated tests for tenant isolation, quote approvals, invoice generation, and supplier workflows.

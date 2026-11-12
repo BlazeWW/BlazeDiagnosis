@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { jsonRequest, readJson } from '@/test/apiRouteTestUtils';
+import {
+  customerFixtures,
+  jobCardFixtureTenantIds,
+  vehicleFixtures,
+} from '@/features/job-cards/fixtures/jobCardFixtures';
+import { MockServiceRequestRepository } from '@/features/job-cards/repositories/mockServiceRequestRepository';
 import { ServiceRequestRelationshipValidationError } from '@/features/job-cards/repositories/serviceRequestRepository';
+import { jsonRequest, readJson, routeContext } from '@/test/apiRouteTestUtils';
 
 const tenantContextMock = vi.hoisted(() => ({
   requireTenantContext: vi.fn(),
@@ -9,6 +15,7 @@ const tenantContextMock = vi.hoisted(() => ({
 const jobCardServiceMock = vi.hoisted(() => ({
   createServiceRequest: vi.fn(),
   listServiceRequests: vi.fn(),
+  getServiceRequestById: vi.fn(),
 }));
 
 vi.mock('@/lib/tenancy/tenantContext', () => tenantContextMock);
@@ -20,6 +27,7 @@ vi.mock(
   () => jobCardServiceMock,
 );
 
+import { GET as GET_BY_ID } from './[id]/route';
 import { GET, POST } from './route';
 
 const tenantId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -75,21 +83,112 @@ describe('/api/job-cards', () => {
     });
   });
 
-  it('rejects client-provided tenant IDs', async () => {
-    const response = await POST(
-      jsonRequest('http://localhost/api/job-cards', {
-        ...input,
-        tenantId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-      }),
+  it('runs the API contract against the fixture adapter through create and retrieval', async () => {
+    const repository = new MockServiceRequestRepository({
+      customers: customerFixtures.map((customer) => ({ ...customer })),
+      vehicles: vehicleFixtures.map((vehicle) => ({ ...vehicle })),
+      serviceRequests: [],
+    });
+    jobCardServiceMock.createServiceRequest.mockImplementation(
+      (requestedTenantId: string, serviceInput: typeof input) =>
+        repository.create(requestedTenantId, serviceInput),
+    );
+    jobCardServiceMock.listServiceRequests.mockImplementation(
+      (requestedTenantId: string) => repository.list(requestedTenantId),
+    );
+    jobCardServiceMock.getServiceRequestById.mockImplementation(
+      (requestedTenantId: string, id: string) =>
+        repository.getById(requestedTenantId, id),
     );
 
-    expect(response.status).toBe(422);
-    expect(jobCardServiceMock.createServiceRequest).not.toHaveBeenCalled();
-    await expect(readJson(response)).resolves.toMatchObject({
-      error: { code: 'VALIDATION_ERROR' },
-      success: false,
+    const createdResponse = await POST(
+      jsonRequest('http://localhost/api/job-cards', input),
+    );
+    expect(createdResponse.status).toBe(201);
+    const createdBody = (await createdResponse.json()) as {
+      data: { serviceRequest: { id: string } };
+      success: boolean;
+    };
+    expect(createdBody.success).toBe(true);
+
+    const ownListResponse = await GET();
+    expect(ownListResponse.status).toBe(200);
+    await expect(readJson(ownListResponse)).resolves.toMatchObject({
+      data: {
+        serviceRequests: [
+          {
+            id: createdBody.data.serviceRequest.id,
+            requestedService: input.requestedService,
+          },
+        ],
+      },
+      meta: { count: 1 },
+      success: true,
     });
+
+    const detailResponse = await GET_BY_ID(
+      new Request(
+        `http://localhost/api/job-cards/${createdBody.data.serviceRequest.id}`,
+      ),
+      routeContext({ id: createdBody.data.serviceRequest.id }),
+    );
+    expect(detailResponse.status).toBe(200);
+    await expect(readJson(detailResponse)).resolves.toMatchObject({
+      data: {
+        serviceRequest: {
+          id: createdBody.data.serviceRequest.id,
+          customerId: input.customerId,
+          vehicleId: input.vehicleId,
+          requestedService: input.requestedService,
+        },
+      },
+      success: true,
+    });
+
+    tenantContextMock.requireTenantContext.mockResolvedValue({
+      tenantId: jobCardFixtureTenantIds.southside,
+    });
+    const foreignListResponse = await GET();
+    expect(foreignListResponse.status).toBe(200);
+    await expect(readJson(foreignListResponse)).resolves.toEqual({
+      data: { serviceRequests: [] },
+      meta: { count: 0 },
+      success: true,
+    });
+
+    const foreignDetailResponse = await GET_BY_ID(
+      new Request(
+        `http://localhost/api/job-cards/${createdBody.data.serviceRequest.id}`,
+      ),
+      routeContext({ id: createdBody.data.serviceRequest.id }),
+    );
+    expect(foreignDetailResponse.status).toBe(404);
   });
+
+  it.each([
+    {
+      ...input,
+      tenantId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    },
+    {
+      ...input,
+      unknownField: true,
+    },
+  ])(
+    'rejects client-supplied tenant ID and unknown fields',
+    async (payload) => {
+      const response = await POST(
+        jsonRequest('http://localhost/api/job-cards', payload),
+      );
+
+      expect(response.status).toBe(422);
+      expect(jobCardServiceMock.createServiceRequest).not.toHaveBeenCalled();
+      await expect(readJson(response)).resolves.toMatchObject({
+        error: { code: 'VALIDATION_ERROR' },
+        success: false,
+      });
+    },
+  );
 
   it('returns a bad request for malformed JSON', async () => {
     const response = await POST(

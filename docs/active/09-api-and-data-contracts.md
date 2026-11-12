@@ -86,3 +86,35 @@ Failure:
 - Create requires `jobs.create`; list and detail require `jobs.read`. Invalid
   payloads return `422 VALIDATION_ERROR`, relationship failures return
   `409 CONFLICT`, and denied operations return `403 FORBIDDEN`.
+- The accepted create body is:
+
+  ```ts
+  {
+    customerId: string; // UUID
+    vehicleId: string; // UUID
+    requestedService: string;
+    customerConcern?: string;
+    preferredDate?: string; // ISO-compatible date
+  }
+  ```
+
+- `serviceRequest` in create, list, and detail responses has this shape:
+
+  ```ts
+  {
+    id: string;
+    customerId: string;
+    vehicleId: string;
+    requestedService: string;
+    customerConcern?: string;
+    preferredDate?: string; // ISO string
+    status: 'draft' | 'received' | 'converted' | 'cancelled';
+    createdAt: string; // ISO string
+    updatedAt: string; // ISO string
+  }
+  ```
+
+- The API exposes the service-request DTO; the linked job-card row and initial
+  internal status event are persisted but their IDs and job number are not
+  included in this response contract. List and detail responses are tenant
+  scoped, and a foreign-tenant detail ID is indistinguishable from a missing ID.

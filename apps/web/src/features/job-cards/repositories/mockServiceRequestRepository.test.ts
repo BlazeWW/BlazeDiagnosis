@@ -51,6 +51,9 @@ describe('MockServiceRequestRepository', () => {
     await expect(
       repository.create(tenantId, { ...input, customerId: 'missing' }),
     ).rejects.toBeInstanceOf(ServiceRequestRelationshipValidationError);
+    await expect(
+      repository.create(tenantId, { ...input, vehicleId: 'missing' }),
+    ).rejects.toBeInstanceOf(ServiceRequestRelationshipValidationError);
     customerFixtures[0].isArchived = true;
     await expect(repository.create(tenantId, input)).rejects.toThrow(
       'customer is missing, archived',
