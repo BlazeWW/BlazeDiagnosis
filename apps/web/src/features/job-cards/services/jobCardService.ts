@@ -8,8 +8,13 @@ import {
   serviceRequests,
 } from '@/db/schema';
 import { requireTenantPermission } from '@/lib/authorization/guards';
+import { DatabaseServiceRequestRepository } from '../repositories/databaseServiceRequestRepository';
+import type { ServiceRequestRepository } from '../repositories/serviceRequestRepository';
 
 import type { CreateServiceRequestInput } from '../schemas/jobCardSchema';
+
+const serviceRequestRepository: ServiceRequestRepository =
+  new DatabaseServiceRequestRepository();
 
 export async function createServiceRequest(
   tenantId: string,
@@ -17,20 +22,22 @@ export async function createServiceRequest(
 ) {
   await requireTenantPermission(tenantId, 'jobs.create');
 
-  const [request] = await db
-    .insert(serviceRequests)
-    .values({
-      tenantId,
-      customerId: input.customerId,
-      vehicleId: input.vehicleId,
-      requestedService: input.requestedService,
-      customerConcern: input.customerConcern,
-      preferredDate: input.preferredDate,
-      status: 'received',
-    })
-    .returning();
+  return serviceRequestRepository.create(tenantId, input);
+}
 
-  return request;
+export async function listServiceRequests(tenantId: string) {
+  await requireTenantPermission(tenantId, 'jobs.read');
+
+  return serviceRequestRepository.list(tenantId);
+}
+
+export async function getServiceRequestById(
+  tenantId: string,
+  serviceRequestId: string,
+) {
+  await requireTenantPermission(tenantId, 'jobs.read');
+
+  return serviceRequestRepository.getById(tenantId, serviceRequestId);
 }
 
 export async function convertServiceRequestToJobCard(
