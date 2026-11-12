@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSelectWhereChain, createSelectWhereLimitChain } from '@/test/drizzleMock';
+import { calculateDocumentTotals, centsToString } from '@/lib/money/cents';
 
 const authGuardMock = vi.hoisted(() => ({
   requireTenantPermission: vi.fn(),
@@ -194,7 +195,7 @@ describe('BD-025: invoice totals', () => {
     );
   });
 
-  it.fails('BUG: discount total is not capped at the line subtotal', async () => {
+  it('caps the discount total at the line subtotal', async () => {
     const { invoiceValues } = createInvoiceTx([
       line({ discount: '80.00', total: '50.00', unitPrice: '50.00' }),
     ]);
@@ -206,8 +207,7 @@ describe('BD-025: invoice totals', () => {
     );
   });
 
-  it('rounds VAT once on the total today (10 lines of R0.03 = R0.05 VAT)', async () => {
-    // quoteTotals.ts gives R0.00 VAT for the same lines. This changes once totals are shared.
+  it('rounds VAT per line (10 lines of R0.03 have no VAT)', async () => {
     const { invoiceValues } = createInvoiceTx(
       Array.from({ length: 10 }, (_, index) =>
         line({ id: `line-${index}`, total: '0.03', unitPrice: '0.03' }),
@@ -217,7 +217,7 @@ describe('BD-025: invoice totals', () => {
     await createInvoiceFromApprovedQuote('tenant-1', 'quote-1', 'actor-1');
 
     expect(invoiceValues).toHaveBeenCalledWith(
-      expect.objectContaining({ taxTotal: '0.05', total: '0.35' }),
+      expect.objectContaining({ taxTotal: '0.00', total: '0.30' }),
     );
   });
 
@@ -258,4 +258,20 @@ describe('BD-025: invoice totals', () => {
       createInvoiceFromApprovedQuote('tenant-1', 'quote-1', 'actor-1'),
     ).rejects.toThrow('Cannot create an invoice without approved or billable quote items.');
   });
+
+  it('saves exactly what the shared money module calculates', async () => {
+    const lines = [
+      line({ discount: '10.00', quantity: '2', total: '200.00' }),
+      line({ id: 'line-2', quantity: '1.5', total: '675.00', unitPrice: '450.00' }),
+    ];
+    const { invoiceValues } = createInvoiceTx(lines);
+
+    await createInvoiceFromApprovedQuote('tenant-1', 'quote-1', 'actor-1');
+
+    const expected = calculateDocumentTotals(lines);
+    expect(invoiceValues).toHaveBeenCalledWith(
+      expect.objectContaining({ total: centsToString(expected.total) }),
+    );
+  });
 });
+
