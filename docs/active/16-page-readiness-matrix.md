@@ -36,7 +36,7 @@ Track which pages are present, which are demo-safe only, and what must happen be
 | `/[locale]/station/customers/[id]` | Present after build fix | Connect detail components to production customer service and guard access. |
 | `/[locale]/station/vehicles` | Present | Confirm vehicle search and filter UX. |
 | `/[locale]/station/vehicles/[id]` | Present after build fix | Connect detail components to production vehicle service and guard access. |
-| `/[locale]/station/job-cards` | Present, demo data | Implement job card persistence, status changes, assignment, and timeline. |
+| `/[locale]/station/job-cards` | Present, demo data; tenant-scoped persistence API available | Integrate the API; status changes, assignment, and timeline remain separate work. |
 | `/[locale]/station/quotes` | Present | Standardize quote list and connect to database. |
 | `/[locale]/station/quotes/new` | Present | Persist quote builder, revisions, and customer send flow. |
 | `/[locale]/station/invoices` | Present, layout refined | Connect metrics/register to invoice services and payment state. |

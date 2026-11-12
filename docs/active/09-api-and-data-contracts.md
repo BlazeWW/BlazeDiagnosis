@@ -43,6 +43,8 @@ Failure:
 - [ ] `/api/vehicles`
 - [ ] `/api/vehicles/[id]`
 - [ ] `/api/customer-intakes`
+- [x] `/api/job-cards`
+- [x] `/api/job-cards/[id]`
 - [ ] `/api/quotes`
 - [ ] `/api/parts-requests`
 - [ ] `/api/supplier-responses`
@@ -69,3 +71,18 @@ Failure:
 - [ ] Supplier response DTO.
 - [ ] Tenant branding DTO.
 - [ ] Audit event DTO.
+
+## Job-card persistence API
+
+- `POST /api/job-cards` creates a service request and linked job card and returns
+  `201` with `{ data: { serviceRequest }, success: true }`.
+- `GET /api/job-cards` returns the server-resolved tenant's requests with
+  `{ data: { serviceRequests }, meta: { count }, success: true }`.
+- `GET /api/job-cards/[id]` returns the tenant-scoped service request or the
+  same `404 NOT_FOUND` response for missing and foreign-tenant IDs.
+- Create accepts `customerId`, `vehicleId`, `requestedService`, and optional
+  `customerConcern` and `preferredDate`. The strict schema rejects `tenantId`
+  and other unknown fields.
+- Create requires `jobs.create`; list and detail require `jobs.read`. Invalid
+  payloads return `422 VALIDATION_ERROR`, relationship failures return
+  `409 CONFLICT`, and denied operations return `403 FORBIDDEN`.
