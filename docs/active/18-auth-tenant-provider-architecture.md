@@ -111,3 +111,27 @@ Implemented at `apps/web/src/lib/providers/parts/types.ts`:
 - Add a new provider adapter for a South African registration/VIN source such as `TransUnion/eNatis`, `Car Registration API South Africa`, or `VerifyNow`.
 - Add a parts fitment adapter for local supplier catalogs or a South African OEM fitment dataset.
 - Keep provider adapters stateless and isolated behind the registry so the same service can switch between multiple data sources without changing business logic.
+
+## Role Permission Matrix (BD-004)
+
+### Role-to-Action Permission Matrix
+
+| Permission / Action Domain | Customer | Mechanic | Floor / Site Manager | Parts Supplier | Platform Admin |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Tenant & User Management** (`tenant.*`, `users.*`) | — | — | Yes (`tenant.settings.update`, `users.invite`, `users.manage`) | — | Yes (`platform.tenants.manage`, `tenant.manage`) |
+| **Customers** (`customers.read`, `customers.write`) | Read (Self) | Read | Read / Write | — | Read / Write (Global) |
+| **Vehicles** (`vehicles.read`, `vehicles.write`) | Read (Self) | Read / Write | Read / Write | — | Read / Write (Global) |
+| **Job Cards** (`jobs.*`) | Read (Self) | Read, Create, Update Status, Notes | Full Control (`create`, `assign`, `update_status`, `notes`) | — | Full Control |
+| **Quotes & Invoices** (`quotes.*`, `invoices.*`) | Approve (`quotes.approve`) | — | Create, Send, Approve, Invoicing | — | Full Control |
+| **Parts & Supplier Requests** (`parts.*`, `supplier.requests.*`) | Request | Request | Approve Quotes | Read / Respond | Full Control |
+| **Reports & Audits** (`reports.view`, `audit.read`) | — | — | View Reports | — | Full Control (`audit.read`) |
+
+### Security Enforcement & Guard Rules
+
+- **Supplier Isolation Guarantee:** Suppliers are strictly restricted to `supplier.requests.read`, `supplier.requests.respond`, and `parts.request`. Any attempt by a supplier role to invoke customer or platform mutations triggers an immediate failure via `requireTenantPermission()`, logging an audit event and throwing a `TenantAccessError` (`403 Forbidden`).
+- **Read-Only Privilege Protection:** Roles possessing only read permissions (e.g., customer or viewer profiles) are blocked at both the API route and service boundary when attempting to execute write, update, or delete endpoints.
+
+### Privilege Escalation & Role-Change Handling
+
+- **Token Claim Synchronization:** Role and permission assignments are embedded within Auth0 custom claims (`custom:permissions`, `custom:tenant_role`). When a user's role or tenant membership is updated in the identity provider, sessions require a token refresh or re-authentication to propagate updated permissions.
+- **Fail-Closed Authorization:** If a token lacks a required permission or specifies an inactive tenant membership, `requireTenantPermission()` and `requirePermission()` fail closed by default, preventing privilege escalation through stale or forged session claims.
