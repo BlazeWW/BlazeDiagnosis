@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>
+        dark mode code
+    </title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: white;
+            color: black;
+            text-align: center;
+            padding-top: 100px;
+            transition: 0.3s;
+        }
+
+        .dark-mode {
+            background-color: #121212;
+            color: white;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+        }
+    </style>
+    </head>
+<body>
+
+    
+
+    <button onclick="toggleTheme()">Toggle Theme</button>
+
+    <script>
+        function toggleTheme() {
+            document.body.classList.toggle("dark-mode");
+        }
+    </script>
+
+    </body>
+</html>
