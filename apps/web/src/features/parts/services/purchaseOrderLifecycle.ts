@@ -152,27 +152,15 @@ export function evaluatePurchaseOrderCreation(input: {
   responseStatus: string;
 }): { ok: true } | { code: PurchaseOrderErrorCode; ok: false; reason: string } {
   if (input.orderAlreadyExists) {
-    return {
-      code: 'CONFLICT',
-      ok: false,
-      reason: 'A purchase order already exists for this supplier response.',
-    };
+    return { code: 'CONFLICT', ok: false, reason: 'A purchase order already exists for this supplier response.',};
   }
 
   if (!creatableResponseStatuses.has(input.responseStatus)) {
-    return {
-      code: 'CONFLICT',
-      ok: false,
-      reason: 'This supplier response cannot be turned into a purchase order.',
-    };
+    return {code: 'CONFLICT', ok: false, reason: 'This supplier response cannot be turned into a purchase order.',};
   }
 
   if (!creatableRequestStatuses.has(input.requestStatus)) {
-    return {
-      code: 'CONFLICT',
-      ok: false,
-      reason: 'This parts request cannot be turned into a purchase order.',
-    };
+    return {code: 'CONFLICT', ok: false, reason: 'This parts request cannot be turned into a purchase order.',};
   }
 
   return { ok: true };
@@ -188,27 +176,16 @@ export function evaluatePurchaseOrderChange(input: {
   const actor = resolvePurchaseOrderActor(input.actorRole);
 
   if (!actor) {
-    return {
-      code: 'FORBIDDEN',
-      ok: false,
-      reason: 'Only station managers or suppliers can change purchase orders.',
+    return { code: 'FORBIDDEN', ok: false, reason: 'Only station managers or suppliers can change purchase orders.',
     };
   }
 
   if (input.targetStatus === input.currentStatus) {
     if (input.currentStatus === 'partially_delivered') {
-      return evaluatePartialProgress(
-        actor,
-        input.fulfillment,
-        input.lastFulfillment,
-      );
+      return evaluatePartialProgress(actor, input.fulfillment, input.lastFulfillment,);
     }
 
-    return {
-      code: 'CONFLICT',
-      ok: false,
-      reason: `Duplicate status update. ${unchanged}`,
-    };
+    return {code: 'CONFLICT',ok: false, reason: `Duplicate status update. ${unchanged}`,};
   }
 
   const transition = findPurchaseOrderTransition(
@@ -217,11 +194,7 @@ export function evaluatePurchaseOrderChange(input: {
   );
 
   if (!transition) {
-    return {
-      code: 'CONFLICT',
-      ok: false,
-      reason: `Invalid purchase order transition from ${input.currentStatus} to ${input.targetStatus}. ${unchanged}`,
-    };
+    return {code: 'CONFLICT',ok: false,reason: `Invalid purchase order transition from ${input.currentStatus} to ${input.targetStatus}. ${unchanged}`,};
   }
 
   if (transition.actor !== actor) {
@@ -240,12 +213,7 @@ export function evaluatePurchaseOrderChange(input: {
     input.targetStatus !== 'partially_delivered' &&
     input.targetStatus !== 'delivered'
   ) {
-    return {
-      code: 'BAD_REQUEST',
-      ok: false,
-      reason:
-        'Fulfillment quantities are only recorded for partial or final delivery.',
-    };
+    return {code: 'BAD_REQUEST', ok: false, reason: 'Fulfillment quantities are only recorded for partial or final delivery.',};
   }
 
   if (input.targetStatus === 'partially_delivered') {
@@ -264,12 +232,7 @@ export function evaluatePurchaseOrderChange(input: {
       return duplicate;
     }
 
-    return {
-      actor,
-      auditAction: 'parts_order.partially_fulfilled',
-      fulfillment: partial.fulfillment,
-      ok: true,
-    };
+    return {actor,auditAction: 'parts_order.partially_fulfilled',fulfillment: partial.fulfillment,ok: true,};
   }
 
   if (input.targetStatus === 'delivered' && input.fulfillment) {
@@ -279,27 +242,14 @@ export function evaluatePurchaseOrderChange(input: {
       return finalDelivery;
     }
 
-    return {
-      actor,
-      auditAction: 'parts_order.status_changed',
-      fulfillment: finalDelivery.fulfillment,
-      ok: true,
-    };
+    return {actor,auditAction: 'parts_order.status_changed',fulfillment: finalDelivery.fulfillment,ok: true,};
   }
 
   if (input.targetStatus === 'cancelled') {
-    return {
-      actor,
-      auditAction: 'parts_order.cancelled',
-      ok: true,
-    };
+    return { actor, auditAction: 'parts_order.cancelled', ok: true,};
   }
 
-  return {
-    actor,
-    auditAction: 'parts_order.status_changed',
-    ok: true,
-  };
+  return {actor, auditAction: 'parts_order.status_changed', ok: true,};
 }
 
 function evaluatePartialProgress(
@@ -308,19 +258,11 @@ function evaluatePartialProgress(
   lastFulfillment: FulfillmentSnapshot | null | undefined,
 ): PurchaseOrderChangeDecision {
   if (actor !== 'supplier') {
-    return {
-      code: 'FORBIDDEN',
-      ok: false,
-      reason: 'Only the supplier can record partial fulfillment.',
-    };
+    return { code: 'FORBIDDEN', ok: false, reason: 'Only the supplier can record partial fulfillment.',};
   }
 
   if (!fulfillment) {
-    return {
-      code: 'CONFLICT',
-      ok: false,
-      reason: `Duplicate status update. ${unchanged}`,
-    };
+    return {code: 'CONFLICT', ok: false, reason: `Duplicate status update. ${unchanged}`,};
   }
 
   const partial = readFulfillment(fulfillment, 'partial');
@@ -330,45 +272,24 @@ function evaluatePartialProgress(
   }
 
   if (!lastFulfillment) {
-    return {
-      actor,
-      auditAction: 'parts_order.partially_fulfilled',
-      fulfillment: partial.fulfillment,
-      ok: true,
-    };
+    return {actor,auditAction: 'parts_order.partially_fulfilled',fulfillment: partial.fulfillment,ok: true,};
   }
 
   if (lastFulfillment.quantityOrdered !== partial.fulfillment.quantityOrdered) {
-    return {
-      code: 'CONFLICT',
-      ok: false,
-      reason: 'Ordered quantity cannot change after fulfillment has started.',
-    };
+    return {code: 'CONFLICT', ok: false,reason: 'Ordered quantity cannot change after fulfillment has started.',};
   }
 
   if (
     partial.fulfillment.quantityReceived === lastFulfillment.quantityReceived
   ) {
-    return {
-      code: 'CONFLICT',
-      ok: false,
-      reason: `Duplicate fulfillment update. ${unchanged}`,
-    };
+    return {code: 'CONFLICT', ok: false,reason: `Duplicate fulfillment update. ${unchanged}`,};
   }
 
   if (partial.fulfillment.quantityReceived < lastFulfillment.quantityReceived) {
-    return {
-      code: 'CONFLICT',
-      ok: false,
-      reason: `Received quantity cannot decrease. ${unchanged}`,
-    };
+    return {code: 'CONFLICT', ok: false, reason: `Received quantity cannot decrease. ${unchanged}`,};
   }
 
-  return {
-    actor,
-    auditAction: 'parts_order.partially_fulfilled',
-    fulfillment: partial.fulfillment,
-    ok: true,
+  return {actor, auditAction: 'parts_order.partially_fulfilled', fulfillment: partial.fulfillment, ok: true,
   };
 }
 
@@ -381,27 +302,15 @@ function rejectDuplicateFulfillment(
   }
 
   if (lastFulfillment.quantityOrdered !== fulfillment.quantityOrdered) {
-    return {
-      code: 'CONFLICT',
-      ok: false,
-      reason: 'Ordered quantity cannot change after fulfillment has started.',
-    };
+    return {code: 'CONFLICT', ok: false, reason: 'Ordered quantity cannot change after fulfillment has started.',};
   }
 
   if (lastFulfillment.quantityReceived === fulfillment.quantityReceived) {
-    return {
-      code: 'CONFLICT',
-      ok: false,
-      reason: `Duplicate fulfillment update. ${unchanged}`,
-    };
+    return {code: 'CONFLICT', ok: false, reason: `Duplicate fulfillment update. ${unchanged}`,};
   }
 
   if (fulfillment.quantityReceived < lastFulfillment.quantityReceived) {
-    return {
-      code: 'CONFLICT',
-      ok: false,
-      reason: `Received quantity cannot decrease. ${unchanged}`,
-    };
+    return {code: 'CONFLICT', ok: false, reason: `Received quantity cannot decrease. ${unchanged}`,};
   }
 
   return null;
@@ -427,45 +336,23 @@ function readFulfillment(
   const { quantityOrdered, quantityReceived } = fulfillment;
 
   if (!Number.isFinite(quantityOrdered) || !Number.isFinite(quantityReceived)) {
-    return {
-      code: 'BAD_REQUEST',
-      ok: false,
-      reason: 'Fulfillment quantities must be finite numbers.',
-    };
+    return {code: 'BAD_REQUEST', ok: false, reason: 'Fulfillment quantities must be finite numbers.',};
   }
 
   if (quantityOrdered <= 0 || quantityReceived <= 0) {
-    return {
-      code: 'BAD_REQUEST',
-      ok: false,
-      reason: 'Fulfillment quantities must be greater than zero.',
-    };
+    return { code: 'BAD_REQUEST', ok: false, reason: 'Fulfillment quantities must be greater than zero.',};
   }
 
   if (mode === 'partial' && quantityReceived > quantityOrdered) {
-    return {
-      code: 'BAD_REQUEST',
-      ok: false,
-      reason: 'Received quantity cannot exceed the ordered quantity.',
-    };
+    return {code: 'BAD_REQUEST', ok: false, reason: 'Received quantity cannot exceed the ordered quantity.',};
   }
 
   if (mode === 'partial' && quantityReceived === quantityOrdered) {
-    return {
-      code: 'BAD_REQUEST',
-      ok: false,
-      reason:
-        'Receive the full quantity by marking the purchase order delivered.',
-    };
+    return {code: 'BAD_REQUEST', ok: false, reason:'Receive the full quantity by marking the purchase order delivered.',};
   }
 
   if (mode === 'final' && quantityReceived !== quantityOrdered) {
-    return {
-      code: 'BAD_REQUEST',
-      ok: false,
-      reason:
-        'Final delivery requires the received quantity to match the ordered quantity.',
-    };
+    return {code: 'BAD_REQUEST', ok: false, reason:'Final delivery requires the received quantity to match the ordered quantity.',};
   }
 
   return {

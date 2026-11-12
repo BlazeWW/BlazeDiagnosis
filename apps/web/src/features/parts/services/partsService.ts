@@ -3,7 +3,6 @@ import { revalidatePath } from 'next/cache';
 
 import { db } from '@/db/client';
 import { parts, partsRequests, partsRequestItems } from '@/db/schema/parts';
-import { supplierResponses } from '@/db/schema/suppliers';
 import { requireTenantContext } from '@/lib/tenancy/tenantContext';
 
 export interface ICreatePartPayload {

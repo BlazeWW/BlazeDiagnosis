@@ -23,8 +23,7 @@ import {
   type PurchaseOrderActorKind,
 } from './purchaseOrderLifecycle';
 
-const actorUserIdPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const actorUserIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export type PurchaseOrderView = {
   createdAt: Date;
@@ -65,10 +64,7 @@ export async function createPurchaseOrder(
   const actor = await requireActor(tenantId);
 
   if (actor.actor !== 'station') {
-    throw new PurchaseOrderError(
-      'Only a station manager can create a purchase order.',
-      'FORBIDDEN',
-    );
+    throw new PurchaseOrderError('Only a station manager can create a purchase order.','FORBIDDEN',);
   }
 
   return db.transaction(async (tx) => {
@@ -99,10 +95,7 @@ export async function createPurchaseOrder(
       .limit(1);
 
     if (!request || request.tenantId !== tenantId) {
-      throw new PurchaseOrderError(
-        'Parts request not found for this supplier response.',
-        'NOT_FOUND',
-      );
+      throw new PurchaseOrderError('Parts request not found for this supplier response.','NOT_FOUND',);
     }
 
     const [existing] = await tx
@@ -161,10 +154,7 @@ export async function createPurchaseOrder(
       .returning();
 
     if (!created) {
-      throw new PurchaseOrderError(
-        'Purchase order could not be saved.',
-        'CONFLICT',
-      );
+      throw new PurchaseOrderError('Purchase order could not be saved.','CONFLICT',);
     }
 
     await writeOrderAudit(tx, {
@@ -340,10 +330,7 @@ export async function changePurchaseOrderStatus(
       .returning();
 
     if (!updated) {
-      throw new PurchaseOrderError(
-        'Purchase order changed concurrently. The stored purchase order was not changed.',
-        'CONFLICT',
-      );
+      throw new PurchaseOrderError('Purchase order changed concurrently. The stored purchase order was not changed.','CONFLICT',);
     }
 
     const saved = {
@@ -380,10 +367,7 @@ async function requireActor(tenantId: string): Promise<Actor> {
   const actor = resolvePurchaseOrderActor(role);
 
   if (!role || !actor) {
-    throw new PurchaseOrderError(
-      'Only station managers or suppliers can access purchase orders.',
-      'FORBIDDEN',
-    );
+    throw new PurchaseOrderError('Only station managers or suppliers can access purchase orders.','FORBIDDEN',);
   }
 
   const authorized = await requireTenantPermission(
@@ -473,10 +457,7 @@ function asOrderStatus(status: string): PartsOrderStatus {
     return status;
   }
 
-  throw new PurchaseOrderError(
-    `Unsupported purchase order status "${status}". The stored purchase order was not changed.`,
-    'CONFLICT',
-  );
+  throw new PurchaseOrderError(`Unsupported purchase order status "${status}". The stored purchase order was not changed.`,'CONFLICT',);
 }
 
 type AuditReader = {
