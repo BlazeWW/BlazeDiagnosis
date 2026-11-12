@@ -1,6 +1,6 @@
 import type { ApiResponse } from '@/types/api';
 import type { Customer } from '@/types/customers';
-import type { VehicleRecord } from '@/types/vehicles';
+import type { VehicleRecord, VehicleServiceHistory } from '@/types/vehicles';
 
 type RequestOptions = RequestInit & {
   errorMessage?: string;
@@ -40,11 +40,13 @@ export async function fetchCustomerById(customerId: string) {
 }
 
 export async function fetchVehiclesForCustomer(customerId: string) {
-  return requestJson<{ vehicles: unknown[] }>(`/api/vehicles/customer/${customerId}`, {
-    errorMessage: 'Failed to fetch customer vehicles.',
-  });
+  return requestJson<{ vehicles: unknown[] }>(
+    `/api/vehicles/customer/${customerId}`,
+    {
+      errorMessage: 'Failed to fetch customer vehicles.',
+    },
+  );
 }
-
 
 export async function fetchCustomerIntakeHistory(customerId: string) {
   return requestJson<{ intakes: VehicleRecord[] }>(
@@ -73,7 +75,6 @@ export async function createVehicle(vehicleData: unknown) {
   });
 }
 
-
 export async function createCustomer(customerData: unknown) {
   const data = await requestJson<{ customer: Customer }>(`/api/customers`, {
     method: 'POST',
@@ -86,13 +87,19 @@ export async function createCustomer(customerData: unknown) {
 }
 
 // Form Submission: Update an existing customer profile record
-export async function updateCustomer(customerId: string, customerData: unknown) {
-  const data = await requestJson<{ customer: Customer }>(`/api/customers/${customerId}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(customerData),
-    errorMessage: 'Failed to update customer profile data.',
-  });
+export async function updateCustomer(
+  customerId: string,
+  customerData: unknown,
+) {
+  const data = await requestJson<{ customer: Customer }>(
+    `/api/customers/${customerId}`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(customerData),
+      errorMessage: 'Failed to update customer profile data.',
+    },
+  );
 
   return data.customer;
 }
@@ -107,15 +114,40 @@ export async function updateVehicle(vehicleId: string, vehicleData: unknown) {
 }
 
 export async function deleteCustomer(customerId: string) {
-  return requestJson<{ id: string; message: string }>(`/api/customers/${customerId}`, {
-    method: 'DELETE',
-    errorMessage: 'Failed to delete customer.',
-  });
+  return requestJson<{ id: string; message: string }>(
+    `/api/customers/${customerId}`,
+    {
+      method: 'DELETE',
+      errorMessage: 'Failed to delete customer.',
+    },
+  );
 }
 
 export async function deleteVehicle(vehicleId: string) {
-  return requestJson<{ id: string; message: string }>(`/api/vehicles/${vehicleId}`, {
-    method: 'DELETE',
-    errorMessage: 'Failed to delete vehicle.',
-  });
+  return requestJson<{ id: string; message: string }>(
+    `/api/vehicles/${vehicleId}`,
+    {
+      method: 'DELETE',
+      errorMessage: 'Failed to delete vehicle.',
+    },
+  );
+}
+
+export async function fetchVehicleServiceHistory(
+  vehicleId: string,
+  options: { audience?: 'customer' | 'staff'; customerId?: string } = {},
+) {
+  const params = new URLSearchParams();
+  if (options.audience) {
+    params.set('audience', options.audience);
+  }
+  if (options.customerId) {
+    params.set('customerId', options.customerId);
+  }
+  const queryString = params.toString();
+
+  return requestJson<{ history: VehicleServiceHistory }>(
+    `/api/vehicles/${vehicleId}/history${queryString ? `?${queryString}` : ''}`,
+    { errorMessage: 'Failed to fetch vehicle service history.' },
+  );
 }
