@@ -4,7 +4,13 @@ import { useEffect, useState } from 'react';
 
 import { StatusBadge } from '@/components/common/statusBadge';
 import { EmptyState } from '@/components/data-display';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { requestJson } from '@/lib/apiClient';
 import type { VehicleDetailProps, VehicleDetailRecord } from '@/types/vehicles';
 
@@ -13,7 +19,7 @@ export function VehicleDetail({ vehicleId }: VehicleDetailProps) {
   const [loading, setLoading] = useState(true);
   const [vehicle, setVehicle] = useState<VehicleDetailRecord | null>(null);
 
-    useEffect(() => {
+  useEffect(() => {
     const loadVehicle = async () => {
       try {
         setError(null);
@@ -24,11 +30,15 @@ export function VehicleDetail({ vehicleId }: VehicleDetailProps) {
           `/api/vehicles/${vehicleId}`,
           { errorMessage: 'Unable to load vehicle.' },
         );
-        
+
         // 2. FIXED: Assign the singular vehicle object to state
         setVehicle(data.vehicle);
       } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : 'Unable to load vehicle.');
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : 'Unable to load vehicle.',
+        );
       } finally {
         setLoading(false);
       }
@@ -66,16 +76,41 @@ export function VehicleDetail({ vehicleId }: VehicleDetailProps) {
             {vehicle.make ?? 'Vehicle'} {vehicle.model ?? ''}
           </CardTitle>
           <CardDescription>
-            {vehicle.registrationNumber ?? 'No registration'} • Owner: {vehicle.customerName ?? 'Unassigned'}
+            {vehicle.registrationNumber ?? 'No registration'} • Owner:{' '}
+            {vehicle.customerName ?? 'Unassigned'}
           </CardDescription>
         </div>
-        {vehicle.archived ? <StatusBadge tone="warning">Archived</StatusBadge> : <StatusBadge tone="success">Active</StatusBadge>}
+        {vehicle.archived ? (
+          <StatusBadge tone="warning">Archived</StatusBadge>
+        ) : (
+          <StatusBadge tone="success">Active</StatusBadge>
+        )}
       </CardHeader>
       <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <DetailItem label="Created" value={vehicle.createdAt ? new Date(vehicle.createdAt).toLocaleString() : '—'} />
-        <DetailItem label="Updated" value={vehicle.updatedAt ? new Date(vehicle.updatedAt).toLocaleString() : '—'} />
-        <DetailItem label="Open jobs" value={String(vehicle.jobs?.length ?? 0)} />
-        <DetailItem label="Quotes" value={String(vehicle.quotes?.length ?? 0)} />
+        <DetailItem
+          label="Created"
+          value={
+            vehicle.createdAt
+              ? new Date(vehicle.createdAt).toLocaleString()
+              : '—'
+          }
+        />
+        <DetailItem
+          label="Updated"
+          value={
+            vehicle.updatedAt
+              ? new Date(vehicle.updatedAt).toLocaleString()
+              : '—'
+          }
+        />
+        <DetailItem
+          label="Open jobs"
+          value={String(vehicle.jobs?.length ?? 0)}
+        />
+        <DetailItem
+          label="Quotes"
+          value={String(vehicle.quotes?.length ?? 0)}
+        />
       </CardContent>
     </Card>
   );
