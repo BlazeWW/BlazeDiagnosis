@@ -36,6 +36,19 @@ Failure:
 - [ ] Avoid leaking internal stack traces.
 - [ ] Add request IDs to logs.
 
+## Cross-tenant test coverage (BD-058)
+
+| Endpoint | Cross-tenant GET | Cross-tenant PATCH | Cross-tenant DELETE | Positive control |
+|---|---|---|---|---|
+| `/api/customers/[id]` | ✅ | ✅ | ✅ | ✅ |
+| `/api/vehicles/[id]` | ✅ | ✅ | ✅ | ✅ |
+| `/api/quotes/[id]` | — (route not implemented) | — | — | — |
+| `/api/invoices/[id]` | — (route not implemented) | — | — | — |
+| `/api/parts-requests/[id]` | — (route not implemented) | — | — | — |
+
+Tests: `apps/web/src/test/cross-tenant-negative.test.ts`.
+Scope note: Quote, invoice, and parts-request `[id]` routes do not yet exist in `main`. Cross-tenant tests will be added when those routes are implemented.
+
 ## Canonical routes to keep
 
 - [ ] `/api/customers`
