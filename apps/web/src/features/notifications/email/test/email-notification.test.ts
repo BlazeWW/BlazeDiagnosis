@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { MockEmailProviderAdapter } from "../adapters/mock-email.adapter";
+import type { EmailDeliveryRepository } from "../repositories/email-delivery.repository";
 
 import {
   sendInvoiceEmail,
@@ -13,15 +14,43 @@ describe("Email Notification Service", () => {
   function createDependencies(invoice = INVOICE_A) {
     const provider = new MockEmailProviderAdapter();
 
+    const authorizeTenant = vi.fn().mockResolvedValue(undefined);
+    const loadInvoice = vi.fn().mockResolvedValue(invoice);
+
+    const repository = {
+      createOrGet: vi.fn().mockResolvedValue({
+        created: true,
+        delivery: {
+          id: "delivery-001",
+          status: "queued",
+          attemptCount: 0,
+          providerReference: null,
+          failureCode: null,
+        },
+      }),
+
+      claim: vi.fn().mockResolvedValue({
+        id: "delivery-001",
+        status: "sending",
+        attemptCount: 1,
+      }),
+
+      finish: vi.fn().mockResolvedValue(undefined),
+    } as unknown as EmailDeliveryRepository;
+
     const dependencies: EmailNotificationDependencies = {
-      authorizeTenant: vi.fn().mockResolvedValue(undefined),
-      loadInvoice: vi.fn().mockResolvedValue(invoice),
+      authorizeTenant,
+      loadInvoice,
       provider,
+      repository,
     };
 
     return {
       dependencies,
       provider,
+      authorizeTenant,
+      loadInvoice,
+      repository,
     };
   }
 
@@ -39,14 +68,12 @@ describe("Email Notification Service", () => {
 
     expect(result.success).toBe(true);
     expect(provider.sentEmails).toHaveLength(1);
-
     expect(provider.sentEmails[0].to).toBe("john@example.com");
-
     expect(provider.sentEmails[0].subject).toBe("Invoice INV-001 issued");
   });
 
   it("authorizes the tenant before loading the invoice", async () => {
-    const { dependencies } = createDependencies();
+    const { dependencies, authorizeTenant, loadInvoice } = createDependencies();
 
     await sendInvoiceEmail(
       {
@@ -57,10 +84,10 @@ describe("Email Notification Service", () => {
       dependencies,
     );
 
-    expect(dependencies.authorizeTenant).toHaveBeenCalledWith(TENANT_A);
+    expect(authorizeTenant).toHaveBeenCalledWith(TENANT_A);
 
-    expect(dependencies.authorizeTenant.mock.invocationCallOrder[0]).toBeLessThan(
-      dependencies.loadInvoice.mock.invocationCallOrder[0],
+    expect(authorizeTenant.mock.invocationCallOrder[0]).toBeLessThan(
+      loadInvoice.mock.invocationCallOrder[0],
     );
   });
 
@@ -218,10 +245,32 @@ describe("Email Notification Service", () => {
       },
     ]);
 
+    const repository = {
+      createOrGet: vi.fn().mockResolvedValue({
+        created: true,
+        delivery: {
+          id: "delivery-001",
+          status: "queued",
+          attemptCount: 0,
+          providerReference: null,
+          failureCode: null,
+        },
+      }),
+
+      claim: vi.fn().mockResolvedValue({
+        id: "delivery-001",
+        status: "sending",
+        attemptCount: 1,
+      }),
+
+      finish: vi.fn().mockResolvedValue(undefined),
+    } as unknown as EmailDeliveryRepository;
+
     const dependencies: EmailNotificationDependencies = {
       authorizeTenant: vi.fn().mockResolvedValue(undefined),
       loadInvoice: vi.fn().mockResolvedValue(INVOICE_A),
       provider,
+      repository,
     };
 
     const result = await sendInvoiceEmail(
@@ -236,5 +285,67 @@ describe("Email Notification Service", () => {
     expect(result.success).toBe(false);
     expect(result.retryable).toBe(true);
     expect(result.failureCode).toBe("PROVIDER_TEMPORARY_FAILURE");
+    expect(repository.finish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        failureCode: "PROVIDER_TEMPORARY_FAILURE",
+        attemptNumber: 1,
+      }),
+    );
+  });
+
+  it("records a successful delivery and its attempt", async () => {
+    const { dependencies, repository } = createDependencies();
+
+    const result = await sendInvoiceEmail(
+      {
+        tenantId: TENANT_A,
+        invoiceId: INVOICE_A.id,
+        eventType: "invoice_issued",
+      },
+      dependencies,
+    );
+
+    expect(result.success).toBe(true);
+    expect(repository.createOrGet).toHaveBeenCalledOnce();
+    expect(repository.claim).toHaveBeenCalledOnce();
+
+    expect(repository.finish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: TENANT_A,
+        deliveryId: "delivery-001",
+        attemptNumber: 1,
+        success: true,
+      }),
+    );
+  });
+
+  it("does not send an email when a delivery already exists", async () => {
+    const { dependencies, provider, repository } = createDependencies();
+
+    vi.mocked(repository.createOrGet).mockResolvedValue({
+      created: false,
+      delivery: {
+        id: "delivery-001",
+        status: "sent",
+        attemptCount: 1,
+        providerReference: "mock-1",
+        failureCode: null,
+      },
+    } as Awaited<ReturnType<EmailDeliveryRepository["createOrGet"]>>);
+
+    const result = await sendInvoiceEmail(
+      {
+        tenantId: TENANT_A,
+        invoiceId: INVOICE_A.id,
+        eventType: "invoice_issued",
+      },
+      dependencies,
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.providerReference).toBe("mock-1");
+    expect(provider.sentEmails).toHaveLength(0);
+    expect(repository.claim).not.toHaveBeenCalled();
   });
 });

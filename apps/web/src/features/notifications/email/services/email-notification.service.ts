@@ -1,5 +1,8 @@
 import "server-only";
-
+import {
+  emailDeliveryRepository,
+  type EmailDeliveryRepository,
+} from "../repositories/email-delivery.repository";
 import { and, eq } from "drizzle-orm";
 
 import { customers, invoices, tenants } from "@/db/schema";
@@ -44,6 +47,8 @@ export interface EmailNotificationDependencies {
   loadInvoice: (tenantId: string, invoiceId: string) => Promise<InvoiceEmailContext | null>;
 
   provider: EmailProvider;
+
+  repository: EmailDeliveryRepository;
 }
 
 /**
@@ -199,6 +204,7 @@ export async function sendInvoiceEmail(
     loadInvoice: loadInvoiceFromDatabase,
 
     provider: mockProvider,
+    repository: emailDeliveryRepository,
   },
 ): Promise<EmailProviderResult> {
   // 1. Authorize tenant access.
@@ -239,13 +245,73 @@ export async function sendInvoiceEmail(
   // 8. Render HTML and plain-text email.
   const renderedEmail = renderInvoiceEmail(input.eventType, payload);
 
-  // 9. Submit through the configured provider.
-  return dependencies.provider.send({
-    to: recipient,
-    subject: renderedEmail.subject,
-    html: renderedEmail.html,
-    text: renderedEmail.text,
+  // 9. Create or retrieve the persistent delivery record.
+  const idempotencyKey = `${input.tenantId}:${invoice.id}:${input.eventType}`;
 
-    idempotencyKey: `${input.tenantId}:${invoice.id}:${input.eventType}`,
+  const { delivery, created } = await dependencies.repository.createOrGet({
+    tenantId: input.tenantId,
+    invoiceId: invoice.id,
+    eventType: input.eventType,
+    idempotencyKey,
   });
+
+  // Never submit an existing delivery a second time.
+  if (!created) {
+    if (delivery.status === "sent") {
+      return {
+        success: true,
+        providerReference: delivery.providerReference ?? undefined,
+        retryable: false,
+      };
+    }
+
+    throw new Error(`Email delivery already exists with status: ${delivery.status}`);
+  }
+
+  // 10. Atomically claim the new delivery.
+  const claimed = await dependencies.repository.claim({
+    tenantId: input.tenantId,
+    deliveryId: delivery.id,
+  });
+
+  if (!claimed) {
+    throw new Error("Email delivery could not be claimed.");
+  }
+
+  // 11. Submit through the provider.
+  let result: EmailProviderResult;
+
+  try {
+    result = await dependencies.provider.send({
+      to: recipient,
+      subject: renderedEmail.subject,
+      html: renderedEmail.html,
+      text: renderedEmail.text,
+      idempotencyKey,
+    });
+  } catch (error) {
+    // Record an unexpected provider exception without storing its message,
+    // which could contain sensitive information.
+    await dependencies.repository.finish({
+      tenantId: input.tenantId,
+      deliveryId: claimed.id,
+      attemptNumber: claimed.attemptCount,
+      success: false,
+      failureCode: "UNKNOWN_ERROR",
+    });
+
+    throw error;
+  }
+
+  // 12. Persist the provider outcome and its attempt record.
+  await dependencies.repository.finish({
+    tenantId: input.tenantId,
+    deliveryId: claimed.id,
+    attemptNumber: claimed.attemptCount,
+    success: result.success,
+    providerReference: result.providerReference,
+    failureCode: result.failureCode,
+  });
+
+  return result;
 }
