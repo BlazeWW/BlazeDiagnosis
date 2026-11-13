@@ -3,7 +3,6 @@ import "server-only";
 import { and, eq } from "drizzle-orm";
 
 import { customers, invoices, tenants } from "@/db/schema";
-import { requireTenantPermission } from "@/lib/auth/auth-guards";
 
 import type {
   EmailNotificationEventType,
@@ -191,7 +190,11 @@ export async function sendInvoiceEmail(
   input: SendInvoiceEmailInput,
 
   dependencies: EmailNotificationDependencies = {
-    authorizeTenant: (tenantId) => requireTenantPermission(tenantId, "invoices.read"),
+    authorizeTenant: async (tenantId) => {
+      const { requireTenantPermission } = await import("@/lib/auth/auth-guards");
+
+      return requireTenantPermission(tenantId, "invoices.read");
+    },
 
     loadInvoice: loadInvoiceFromDatabase,
 
