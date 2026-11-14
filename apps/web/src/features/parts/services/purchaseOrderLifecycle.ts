@@ -71,12 +71,7 @@ export const purchaseOrderTransitions: readonly PurchaseOrderTransition[] = [
 ];
 
 const creatableResponseStatuses = new Set(['submitted', 'accepted']);
-const creatableRequestStatuses = new Set([
-  'draft',
-  'sent',
-  'response_received',
-  'accepted',
-]);
+const creatableRequestStatuses = new Set(['draft', 'sent', 'response_received', 'accepted',]);
 
 export type FulfillmentSnapshot = {
   quantityOrdered: number;
@@ -135,9 +130,7 @@ export function resolvePurchaseOrderActor(
   return null;
 }
 
-export function findPurchaseOrderTransition(
-  from: PartsOrderStatus,
-  to: PartsOrderStatus,
+export function findPurchaseOrderTransition(from: PartsOrderStatus,to: PartsOrderStatus,
 ) {
   return (
     purchaseOrderTransitions.find(

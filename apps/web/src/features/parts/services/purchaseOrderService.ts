@@ -57,10 +57,7 @@ type Actor = {
   userId: string;
 };
 
-export async function createPurchaseOrder(
-  tenantId: string,
-  supplierResponseId: string,
-) {
+export async function createPurchaseOrder(tenantId: string, supplierResponseId: string,) {
   const actor = await requireActor(tenantId);
 
   if (actor.actor !== 'station') {
@@ -172,10 +169,7 @@ export async function createPurchaseOrder(
   });
 }
 
-export async function listPurchaseOrders(
-  tenantId: string,
-  filter?: { jobCardId?: string },
-) {
+export async function listPurchaseOrders(tenantId: string, filter?: { jobCardId?: string },) {
   await requireActor(tenantId);
 
   const filters = [eq(partsOrders.tenantId, tenantId)];
@@ -409,9 +403,7 @@ function roleForTenant(
   return null;
 }
 
-function fulfillmentFromInput(
-  input: PurchaseOrderTransitionInput,
-): FulfillmentSnapshot | undefined {
+function fulfillmentFromInput(input: PurchaseOrderTransitionInput,): FulfillmentSnapshot | undefined {
   if (
     input.quantityOrdered === undefined &&
     input.quantityReceived === undefined
@@ -425,10 +417,7 @@ function fulfillmentFromInput(
   };
 }
 
-function timestampsForStatus(
-  status: PartsOrderStatus,
-  current: { deliveredAt: Date | null; orderedAt: Date | null },
-) {
+function timestampsForStatus(status: PartsOrderStatus,current: { deliveredAt: Date | null; orderedAt: Date | null },) {
   const now = new Date();
 
   return {
