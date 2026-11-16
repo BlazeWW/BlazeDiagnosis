@@ -1,6 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createSelectWhereChain, createSelectWhereLimitChain } from '@/test/drizzleMock';
 import { calculateDocumentTotals, centsToString } from '@/lib/money/cents';
+import {
+  createSelectWhereChain,
+  createSelectWhereLimitChain,
+} from '@/test/drizzleMock';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const authGuardMock = vi.hoisted(() => ({
   requireTenantPermission: vi.fn(),
@@ -19,7 +22,10 @@ const dbMock = vi.hoisted(() => ({
 
 vi.mock('@/lib/authorization/guards', () => authGuardMock);
 vi.mock('@/lib/auditWriter', () => auditWriterMock);
-vi.mock('@/features/notifications/services/notificationService', () => notificationServiceMock);
+vi.mock(
+  '@/features/notifications/services/notificationService',
+  () => notificationServiceMock,
+);
 vi.mock('@/db/client', () => ({ db: dbMock }));
 
 import { createInvoiceFromApprovedQuote } from './invoiceService';
@@ -105,7 +111,9 @@ describe('invoiceService', () => {
     expect(auditWriterMock.default.writeAudit).toHaveBeenCalledWith(
       expect.objectContaining({ resource: 'INVOICE', resourceId: 'invoice-1' }),
     );
-    expect(notificationServiceMock.createInvoiceNotificationRecord).toHaveBeenCalledWith(
+    expect(
+      notificationServiceMock.createInvoiceNotificationRecord,
+    ).toHaveBeenCalledWith(
       expect.objectContaining({ invoiceId: 'invoice-1', tenantId: 'tenant-1' }),
       tx,
     );
@@ -116,7 +124,9 @@ describe('invoiceService', () => {
       select: vi.fn(() => ({
         from: vi.fn(() => ({
           where: vi.fn(() => ({
-            limit: vi.fn(() => Promise.resolve([{ id: 'quote-1', status: 'locked' }])),
+            limit: vi.fn(() =>
+              Promise.resolve([{ id: 'quote-1', status: 'locked' }]),
+            ),
           })),
         })),
       })),
@@ -146,10 +156,20 @@ describe('BD-025: invoice totals', () => {
   }
 
   // A fake transaction: an approved quote, then the given billable lines.
-  function createInvoiceTx(lines: Array<Record<string, string>>) {
+  function createInvoiceTx(
+    lines: Array<Record<string, string>>,
+    quote: Record<string, string> = {
+      customerId: 'customer-1',
+      id: 'quote-1',
+      jobCardId: 'job-1',
+      status: 'approved',
+    },
+  ) {
     const invoiceValues = vi.fn(() => ({
       returning: vi.fn(() =>
-        Promise.resolve([{ id: 'invoice-1', invoiceNumber: 'INV-1', total: '0.00' }]),
+        Promise.resolve([
+          { id: 'invoice-1', invoiceNumber: 'INV-1', total: '0.00' },
+        ]),
       ),
     }));
     const lineValues = vi.fn(() => Promise.resolve());
@@ -160,13 +180,11 @@ describe('BD-025: invoice totals', () => {
         .mockReturnValueOnce({ values: lineValues }),
       select: vi
         .fn()
-        .mockReturnValueOnce(
-          createSelectWhereLimitChain([
-            { customerId: 'customer-1', id: 'quote-1', jobCardId: 'job-1', status: 'approved' },
-          ]),
-        )
+        .mockReturnValueOnce(createSelectWhereLimitChain([quote]))
         .mockReturnValueOnce(createSelectWhereChain(lines)),
-      update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(() => Promise.resolve()) })) })),
+      update: vi.fn(() => ({
+        set: vi.fn(() => ({ where: vi.fn(() => Promise.resolve()) })),
+      })),
     };
     dbMock.transaction.mockImplementation((callback) => callback(tx));
 
@@ -243,7 +261,11 @@ describe('BD-025: invoice totals', () => {
     await createInvoiceFromApprovedQuote('tenant-1', 'quote-1', 'actor-1');
 
     expect(invoiceValues).toHaveBeenCalledWith(
-      expect.objectContaining({ subtotal: '150.00', taxTotal: '22.50', total: '172.50' }),
+      expect.objectContaining({
+        subtotal: '150.00',
+        taxTotal: '22.50',
+        total: '172.50',
+      }),
     );
     expect(lineValues).toHaveBeenCalledWith([
       expect.objectContaining({ quoteLineItemId: 'line-1' }),
@@ -256,13 +278,20 @@ describe('BD-025: invoice totals', () => {
 
     await expect(
       createInvoiceFromApprovedQuote('tenant-1', 'quote-1', 'actor-1'),
-    ).rejects.toThrow('Cannot create an invoice without approved or billable quote items.');
+    ).rejects.toThrow(
+      'Cannot create an invoice without approved or billable quote items.',
+    );
   });
 
   it('saves exactly what the shared money module calculates', async () => {
     const lines = [
       line({ discount: '10.00', quantity: '2', total: '200.00' }),
-      line({ id: 'line-2', quantity: '1.5', total: '675.00', unitPrice: '450.00' }),
+      line({
+        id: 'line-2',
+        quantity: '1.5',
+        total: '675.00',
+        unitPrice: '450.00',
+      }),
     ];
     const { invoiceValues } = createInvoiceTx(lines);
 
@@ -273,5 +302,45 @@ describe('BD-025: invoice totals', () => {
       expect.objectContaining({ total: centsToString(expected.total) }),
     );
   });
-});
 
+  describe('BD-027: current behaviour (before the fix)', () => {
+    it.fails('BUG: rejects a quote that is not approved', async () => {
+      createInvoiceTx([line()], {
+        customerId: 'customer-1',
+        id: 'quote-1',
+        jobCardId: 'job-1',
+        status: 'draft',
+      });
+
+      await expect(
+        createInvoiceFromApprovedQuote('tenant-1', 'quote-1', 'actor-1'),
+      ).rejects.toThrow();
+    });
+
+    it.fails(
+      'BUG: saves the quote id on the invoice, so a retry can be detected',
+      async () => {
+        const { invoiceValues } = createInvoiceTx([line()]);
+
+        await createInvoiceFromApprovedQuote('tenant-1', 'quote-1', 'actor-1');
+
+        expect(invoiceValues).toHaveBeenCalledWith(
+          expect.objectContaining({ quoteId: 'quote-1' }),
+        );
+      },
+    );
+
+    it('currently numbers invoices with a timestamp, not a per-tenant sequence', async () => {
+      const { invoiceValues } = createInvoiceTx([line()]);
+
+      await createInvoiceFromApprovedQuote('tenant-1', 'quote-1', 'actor-1');
+
+      // INV-<milliseconds since 1970>: not sequential, and collides within the same millisecond.
+      expect(invoiceValues).toHaveBeenCalledWith(
+        expect.objectContaining({
+          invoiceNumber: expect.stringMatching(/^INV-\d{13}$/),
+        }),
+      );
+    });
+  });
+});
