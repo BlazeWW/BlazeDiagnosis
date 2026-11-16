@@ -59,4 +59,4 @@ An assessment of the `main` branch was conducted to catalog personal data flows,
   * `pnpm typecheck` — Failed due to missing permissions (`quotes.lock` / `quotes.view`).
   * `pnpm test` — Failed due to missing Auth0 environment variables.
   * `pnpm build` — Failed due to a missing module (`./vehicleForm` in `station/vehicles/page.tsx`).
-* **Note:** As this is a review-and-assessment task, code compilation failures on `main` are recorded as pre-existing exceptions and do not block this documentation deliverable.
+
