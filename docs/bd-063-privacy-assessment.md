@@ -4,7 +4,7 @@
 - **Squad:** Team 9: Cybersecurity Assurance
 - **Suggested Level / Priority:** Y1/P1
 - **Reference:** `docs/active/21-70-intern-task-register.md`
-- **Compliance Boundary Notice:** *This document represents an engineering assessment and gap analysis of current code behavior on the `main` branch. It does NOT constitute a formal legal POPIA certification or legal-compliance claim.*
+- **Compliance Boundary Notice:** *This document represents an engineering assessment and gap analysis of current code behavior on the `main` branch.*
 
 ## 1. Executive Summary & Current Code Reality
 
