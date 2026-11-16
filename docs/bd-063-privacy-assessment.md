@@ -2,7 +2,7 @@
 
 - **GitHub Issue:** #155
 - **Squad:** Team 9: Cybersecurity Assurance
-- **Suggested Level / Priority:** Y1 / P1
+- **Suggested Level / Priority:** Y1/P1
 - **Reference:** `docs/active/21-70-intern-task-register.md`
 - **Compliance Boundary Notice:** *This document represents an engineering assessment and gap analysis of current code behavior on the `main` branch. It does NOT constitute a formal legal POPIA certification or legal-compliance claim.*
 
@@ -26,9 +26,31 @@ An assessment of the `main` branch was conducted to catalog personal data flows,
 | **Invoice** | Billing details, line items, tax numbers | Finance / Customer | Financial record-keeping & tax reporting | Billing, Finance | Stored in DB indefinitely | Retain for 5 years per local financial regulations |
 | **Files / Attachments** | Uploaded documents, images, diagnostic reports | User / Mechanic | Service documentation & file sharing | Authorized Users, Mechanics | Stored in storage bucket without lifecycle rules | Retain matching parent entity lifecycle |
 
-**Here**
+## 3. Access Roles, Retention, and Incident Handling
 
-## 5. Baseline Verification Results (2026-11-04)
+### Access Roles & Permissions
+* **Principle of Least Privilege:** System roles (Customer Support, Fleet Manager, Billing) are isolated using Role-Based Access Control (RBAC).
+* **Audit Logging:** Access to sensitive fields (e.g., authentication tokens, personal contact details) must generate an immutable audit log entry.
+
+### Deletion & Retention Responsibilities
+* **Automated Purging:** Scheduled database jobs require implementation to clear transient messaging logs every 90 days.
+* **Manual Deletion Requests:** Account managers process user deletion requests within 30 calendar days via the admin dashboard.
+* **Correction Requests:** Data subject correction requests must be acknowledged within 2 business days and fulfilled within 14 calendar days via user settings or admin tooling.
+
+### Incident Handling Requirements
+* **Detection & Containment:** Any unauthorized access to stored personal data triggers an immediate containment protocol and account lockdown.
+* **Reporting:** Security incidents must be reported to the data protection lead within 72 hours of detection.
+
+
+## 4. Technical Control Gaps & Legal Review Questions
+
+### Missing Technical Controls (Gaps)
+1. **Automated Deletion:** Lack of automated DB scripts to purge expired vehicle history data and soft-archived customer rows upon account closure.
+2. **Encryption at Rest:** Field-level encryption is not yet implemented for customer phone numbers and sensitive tokens in the local database.
+3. **Role Scoping:** Messaging endpoints currently lack granular tenant-level isolation checks.
+4. **Audit Log Masking:** JSONB snapshots in audit logs store raw personal data without automated masking or TTL rotation.
+
+## 5. Baseline Verification Results 
  
 * **Scope:** Documentation and gap analysis task (`BD-063`).
 * **Environment Check Observations:**
