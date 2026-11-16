@@ -1,11 +1,4 @@
-## Personal Data Inventory
 
-| Workflow | Data Field / Element | Data Owner | Collection Purpose | Permissions / Access Roles | Proposed Retention Rule |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Authentication** | Passwords (hashed), emails, MFA tokens | User / Admin | Identity verification & session management | Auth Service, User | Retain while account is active; delete 30 days post-cancellation |
-| **Customer** | Names, contact info, billing addresses | Customer | Account management & invoicing | Customer Support, Billing | Retain 5 years post-account closure (tax compliance) |
-| **Vehicle** | VINs, registration numbers, telematics | Vehicle Owner | Service scheduling & diagnostic history | Fleet Manager, Mechanics | Retain for full operational life + 1 year |
-| **Messaging** | Direct messages, notification logs | Sender / Recipient | In-app communication & audit logging | System Admin, Parties | Retain logs for 90 days; purge automatically |
 ## Access Roles, Retention, and Incident Handling
 
 ### Access Roles & Permissions
