@@ -1,8 +1,25 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+const dbMock = vi.hoisted(() => ({
+  select: vi.fn(),
+  insert: vi.fn(),
+  update: vi.fn(),
+}));
+
+const authGuardMock = vi.hoisted(() => ({
+  requireTenantPermission: vi.fn(),
+}));
+
+vi.mock('@/db/client', () => ({
+  db: dbMock,
+}));
+
+vi.mock('@/lib/authorization/guards', () => authGuardMock);
 
 import {
   calculateOutstandingBalance,
   getInvoicePaymentStatus,
+  markInvoicePaid,
 } from './paymentService';
 
 describe('paymentService', () => {
@@ -23,10 +40,34 @@ describe('paymentService', () => {
       getInvoicePaymentStatus(5000, 2000),
     ).toBe('partially_paid');
   });
+it('returns paid when invoice is fully paid', () => {
+  expect(
+    getInvoicePaymentStatus(5000, 5000),
+  ).toBe('paid');
+});
 
-  it('returns paid when invoice is fully paid', () => {
-    expect(
-      getInvoicePaymentStatus(5000, 5000),
-    ).toBe('paid');
-  });
+it('rejects zero payments', async () => {
+  await expect(
+    markInvoicePaid(
+      'tenant-1',
+      'invoice-1',
+      0,
+    ),
+  ).rejects.toThrow(
+    'Payment amount must be greater than zero',
+  );
+});
+
+it('rejects negative payments', async () => {
+  await expect(
+    markInvoicePaid(
+      'tenant-1',
+      'invoice-1',
+      -100,
+    ),
+  ).rejects.toThrow(
+    'Payment amount must be greater than zero',
+  );
+});
+
 });

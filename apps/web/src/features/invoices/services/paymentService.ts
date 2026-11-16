@@ -50,7 +50,55 @@ const [invoice] = await db
     ),
   );
 
-if (!invoice) {
-  throw new Error('Invoice not found');
+const currentAmountPaid = Number(
+  invoice.amountPaid,
+);
+
+const invoiceTotal = Number(
+  invoice.total,
+);
+
+if (
+  currentAmountPaid + amount >
+  invoiceTotal
+) {
+  throw new Error(
+    'Payment exceeds outstanding balance',
+  );
 }
+await db.insert(payments).values({
+  tenantId,
+  invoiceId,
+  amount: amount.toString(),
+  method: 'manual',
+  status: 'completed',
+  paidAt: new Date(),
+});
+const newAmountPaid =
+  Number(invoice.amountPaid) + amount;
+  const newStatus = getInvoicePaymentStatus(
+  Number(invoice.total),
+  newAmountPaid,
+);
+await db
+  .update(invoices)
+  .set({
+    amountPaid: newAmountPaid.toString(),
+    status: newStatus,
+    paidAt:
+      newStatus === 'paid'
+        ? new Date()
+        : null,
+  })
+  .where(
+    and(
+      eq(invoices.id, invoiceId),
+      eq(invoices.tenantId, tenantId),
+    ),
+  );
+  return {
+  invoiceId,
+  amountPaid: newAmountPaid,
+  status: newStatus,
+};
 }
