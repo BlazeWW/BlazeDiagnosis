@@ -6,12 +6,15 @@ import {
   timestamp,
   uuid,
   varchar,
+  integer,
+  primaryKey,
+  uniqueIndex
 } from 'drizzle-orm/pg-core';
 
 import { customers } from './customers';
 import { invoiceStatusEnum } from './enums';
 import { jobCards } from './jobs';
-import { quoteLineItems } from './quotes';
+import { quoteLineItems,quotes } from './quotes';
 import { tenants } from './tenants';
 
 export const invoices = pgTable(
@@ -27,6 +30,7 @@ export const invoices = pgTable(
     customerId: uuid('customer_id')
       .references(() => customers.id)
       .notNull(),
+    quoteId: uuid('quote_id').references(() => quotes.id),
     invoiceNumber: varchar('invoice_number', { length: 80 }).notNull(),
     status: invoiceStatusEnum('status').notNull().default('draft'),
     subtotal: numeric('subtotal', { precision: 12, scale: 2 })
@@ -54,6 +58,8 @@ export const invoices = pgTable(
   },
   (table) => [
     index('invoices_tenant_customer_idx').on(table.tenantId, table.customerId),
+    uniqueIndex('invoices_tenant_number_unique').on(table.tenantId, table.invoiceNumber),
+    uniqueIndex('invoices_tenant_quote_unique').on(table.tenantId, table.quoteId),
   ],
 );
 
@@ -103,3 +109,15 @@ export const payments = pgTable('payments', {
     .defaultNow()
     .notNull(),
 });
+
+export const invoiceSequences = pgTable(
+  'invoice_sequences',
+  {
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    year: integer('year').notNull(),
+    lastNumber: integer('last_number').notNull().default(0),
+  },
+  (table) => [primaryKey({ columns: [table.tenantId, table.year] })],
+);
