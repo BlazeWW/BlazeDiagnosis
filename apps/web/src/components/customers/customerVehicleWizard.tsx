@@ -132,14 +132,21 @@ export function CustomerVehicleWizard() {
     <div className="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
       <Card variant="panel">
         <CardHeader>
-          <CardTitle>Intake progress</CardTitle>
+          <CardTitle as="h2">Intake progress</CardTitle>
           <CardDescription>{completionScore}% required details captured</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
-          <div className="h-2 overflow-hidden rounded-full bg-muted">
+          <div 
+              className="h-2 overflow-hidden rounded-full bg-muted"
+              role="progressbar"
+              aria-valuenow={completionScore}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Form completion profile progress"
+          >
             <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${completionScore}%` }} />
           </div>
-          <ol className="grid gap-2">
+          <ol className="grid gap-2" aria-label="Intake registration steps">
             {steps.map((step, index) => {
               const isActive = index === stepIndex;
               const isComplete = index < stepIndex;
@@ -150,9 +157,10 @@ export function CustomerVehicleWizard() {
                     isActive ? 'border-accent bg-accent/10' : 'border-border bg-card'
                   }`}
                   key={step.key}
+                  aria-current={isActive ? 'step' : undefined}
                 >
                   <div className="flex items-center gap-2 font-semibold">
-                    {isComplete ? <CheckCircle2 className="size-4 text-success" /> : null}
+                    {isComplete ? <CheckCircle2 className="size-4 text-success" aria-label="Step completed" /> : null}
                     {step.title}
                   </div>
                   <p className="mt-1 text-xs leading-5 text-muted-foreground">{step.description}</p>
@@ -165,10 +173,22 @@ export function CustomerVehicleWizard() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{activeStep.title} details</CardTitle>
+          <CardTitle as="h2">{activeStep.title} details</CardTitle>
           <CardDescription>{activeStep.description}</CardDescription>
         </CardHeader>
         <CardContent>
+           {statusMessage && (
+            <div 
+              id="wizard-status-alert" 
+              role="alert" 
+              className={`mb-4 p-3 rounded-lg text-sm border ${
+                savedIntake ? 'bg-success/10 border-success/30 text-success' : 'bg-destructive/10 border-destructive/30 text-destructive'
+              }`}
+            >
+              {statusMessage}
+            </div>
+          )}
+
           <form className="grid gap-6" onSubmit={handleSubmit}>
             {activeStep.key === 'customer' ? (
               <CustomerStep customer={customer} onChange={updateCustomer} />
@@ -185,7 +205,7 @@ export function CustomerVehicleWizard() {
             <FormActions className="justify-between">
               <div className="flex gap-2">
                 <Button disabled={stepIndex === 0} onClick={back} type="button" variant="outline">
-                  <ChevronLeft className="size-4" />
+                  <ChevronLeft className="size-4" aria-hidden="true" />
                   Back
                 </Button>
                 {activeStep.key !== 'review' ? (
@@ -196,7 +216,7 @@ export function CustomerVehicleWizard() {
                     variant="accent"
                   >
                     Next
-                    <ChevronRight className="size-4" />
+                    <ChevronRight className="size-4" aria-hidden="true"/>
                   </Button>
                 ) : null}
               </div>
@@ -205,7 +225,7 @@ export function CustomerVehicleWizard() {
                 <div className="flex gap-2">
                   <Button onClick={reset} type="button" variant="outline">Reset</Button>
                   <Button disabled={isSubmitting} type="submit" variant="accent">
-                    <CheckCircle2 className="size-4" />
+                    <CheckCircle2 className="size-4" aria-hidden="true"/>
                     {isSubmitting ? 'Creating...' : 'Create intake'}
                   </Button>
                 </div>
@@ -245,7 +265,7 @@ function CustomerStep({
         </FormField>
         <FormField id="preferredContactMethod" label="Preferred contact method">
           <select
-            className="h-10 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="h-10 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-shadow"
             id="preferredContactMethod"
             name="preferredContactMethod"
             onChange={onChange}
@@ -260,7 +280,7 @@ function CustomerStep({
       </div>
       <FormField id="address" label="Address">
         <textarea
-          className="min-h-24 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="min-h-24 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-shadow"
           id="address"
           name="address"
           onChange={onChange}
@@ -269,16 +289,16 @@ function CustomerStep({
       </FormField>
       <FormField id="customerNotes" label="Customer notes">
         <textarea
-          className="min-h-24 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="min-h-24 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-shadow"
           id="customerNotes"
           name="notes"
           onChange={onChange}
           value={customer.notes}
         />
       </FormField>
-      <p className="rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-        <UserRound className="mr-2 inline size-4" />
-        Either an email or phone number is required so the station can send approvals and service updates.
+      <p className="rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground flex items-center">
+        <UserRound className="mr-2 inline size-4" aria-hidden="true"/>
+        <span>Either an email or phone number is required so the station can send approvals and service updates.</span>
       </p>
     </div>
   );
@@ -320,7 +340,7 @@ function VehicleStep({
         </FormField>
         <FormField id="fuelType" label="Fuel type">
           <select
-            className="h-10 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="h-10 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-shadow"
             id="fuelType"
             name="fuelType"
             onChange={onChange}
@@ -335,7 +355,7 @@ function VehicleStep({
         </FormField>
         <FormField id="transmission" label="Transmission">
           <select
-            className="h-10 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="h-10 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-shadow"
             id="transmission"
             name="transmission"
             onChange={onChange}
@@ -349,16 +369,16 @@ function VehicleStep({
       </div>
       <FormField id="vehicleNotes" label="Vehicle notes">
         <textarea
-          className="min-h-24 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="min-h-24 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-shadow"
           id="vehicleNotes"
           name="notes"
           onChange={onChange}
           value={vehicle.notes}
         />
       </FormField>
-      <p className="rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-        <Wrench className="mr-2 inline size-4" />
-        Required fields are registration number, make, and model. VIN and mileage improve service-history accuracy.
+      <p className="rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground flex items-center">
+        <Wrench className="mr-2 inline size-4 shrink-0" aria-hidden="true"/>
+        <span>Required fields are registration number, make, and model. VIN and mileage improve service-history accuracy.</span>
       </p>
     </div>
   );
@@ -396,7 +416,7 @@ function ReviewStep({
         title="Vehicle summary"
       />
       {savedIntake ? (
-        <p className="rounded-xl border border-success/30 bg-success/10 p-4 text-sm text-success lg:col-span-2">
+        <p className="rounded-xl border border-success/30 bg-success/10 p-4 text-sm text-success lg:col-span-2" role="status">
           Intake {savedIntake.id} was created successfully.
         </p>
       ) : (
@@ -411,7 +431,7 @@ function ReviewStep({
 function ReviewCard({ rows, title }: { rows: [string, string][]; title: string }) {
   return (
     <div className="rounded-xl border border-border bg-muted/40 p-4">
-      <h3 className="font-semibold">{title}</h3>
+      <h2 className="font-semibold text-sm text-foreground">{title}</h2>
       <dl className="mt-4 grid gap-3 text-sm">
         {rows.map(([label, value]) => (
           <div className="grid gap-1" key={label}>
