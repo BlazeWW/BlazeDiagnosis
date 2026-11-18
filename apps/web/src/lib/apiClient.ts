@@ -1,7 +1,7 @@
 import type { ApiResponse } from '@/types/api';
 import type { Customer } from '@/types/customers';
-import { EligibleStaffMember, JobCardRecord } from '@/types/jobCards';
-import type { VehicleRecord } from '@/types/vehicles';
+import type { EligibleStaffMember, JobCardRecord } from '@/types/jobCards';
+import type { VehicleRecord, VehicleServiceHistory } from '@/types/vehicles';
 
 type RequestOptions = RequestInit & {
   errorMessage?: string;
@@ -131,6 +131,13 @@ export async function deleteVehicle(vehicleId: string) {
       method: 'DELETE',
       errorMessage: 'Failed to delete vehicle.',
     },
+  );
+}
+
+export async function fetchVehicleServiceHistory(vehicleId: string) {
+  return requestJson<{ history: VehicleServiceHistory }>(
+    `/api/vehicles/${vehicleId}/history`,
+    { errorMessage: 'Failed to fetch vehicle service history.' },
   );
 }
 
