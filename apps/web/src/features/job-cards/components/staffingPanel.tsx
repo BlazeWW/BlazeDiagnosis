@@ -77,6 +77,8 @@ export function StaffingPanel() {
       setJobCards((current) =>
         current.map((j) => (j.id === jobCardId ? jobCard : j)),
       );
+      // Refresh workload counts so the dropdowns reflect the new assignment.
+      setStaff((await fetchEligibleStaff()).staff);
 
       setSelections((current) => {
         const next = { ...current };

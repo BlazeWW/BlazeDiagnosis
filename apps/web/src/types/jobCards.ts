@@ -9,7 +9,6 @@ export type JobCardRecord = {
 export type EligibleStaffMember = {
   userId: string;
   name: string;
-  email: string;
   role: string;
   activeJobCount: number;
 };

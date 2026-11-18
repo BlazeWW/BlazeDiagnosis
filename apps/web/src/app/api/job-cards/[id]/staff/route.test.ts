@@ -13,6 +13,7 @@ vi.mock('@/lib/tenancy/tenantContext', () => tenantContextMock);
 vi.mock('@/features/job-cards/services/jobCardService', () => jobCardServiceMock);
 vi.mock('@/db/client', () => ({ db: {} }));
 
+import { ApiRequestError } from '@/lib/api/response';
 import { TenantAccessError } from '@/lib/authorization/guards';
 
 import { PATCH } from './route';
@@ -87,9 +88,26 @@ describe('/api/job-cards/[id]/staff', () => {
     expect(jobCardServiceMock.assignJobStaff).not.toHaveBeenCalled();
   });
 
-  it('surfaces service failures', async () => {
+  it('returns 404 when the job card is not in the tenant', async () => {
     jobCardServiceMock.assignJobStaff.mockRejectedValue(
-      new Error('Job not found'),
+      new ApiRequestError('NOT_FOUND', 404, 'Job not found'),
+    );
+
+    const response = await PATCH(
+      jsonRequest(
+        `http://localhost/api/job-cards/${JOB_ID}/staff`,
+        { mechanicId: MECHANIC_ID },
+        { method: 'PATCH' },
+      ),
+      routeContext({ id: JOB_ID }),
+    );
+
+    expect(response.status).toBe(404);
+  });
+
+  it('surfaces unexpected service failures as 500', async () => {
+    jobCardServiceMock.assignJobStaff.mockRejectedValue(
+      new Error('db down'),
     );
 
     const response = await PATCH(

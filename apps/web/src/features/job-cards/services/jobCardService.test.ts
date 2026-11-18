@@ -59,7 +59,10 @@ function txWith(selectResults: unknown[][], updatedRow: unknown) {
 describe('assignJobStaff', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    authGuardMock.requireTenantPermission.mockResolvedValue(undefined);
+    authGuardMock.requireTenantPermission.mockResolvedValue({
+      id: 'auth0|actor-1',
+      email: 'manager@station.test',
+    });
     auditMock.createAuditLog.mockResolvedValue(undefined);
   });
 
@@ -98,6 +101,9 @@ describe('assignJobStaff', () => {
         action: 'job_card.staff_assigned',
         entityId: JOB_ID,
         tenantId: TENANT,
+        newValue: expect.objectContaining({
+          actor: { authUserId: 'auth0|actor-1', email: 'manager@station.test' },
+        }),
       }),
     );
   });
@@ -203,8 +209,8 @@ describe('getEligibleStaffMembers', () => {
   it('returns staff with combined active-job workload counts', async () => {
     selectSequence(
       [
-        { userId: MECHANIC_ID, name: 'Sam', email: 's@x.co', role: 'mechanic' },
-        { userId: MANAGER_ID, name: 'Jo', email: 'j@x.co', role: 'floor_manager' },
+        { userId: MECHANIC_ID, name: 'Sam', role: 'mechanic' },
+        { userId: MANAGER_ID, name: 'Jo', role: 'floor_manager' },
       ],
       [{ userId: MECHANIC_ID, count: 2 }],
       [{ userId: MANAGER_ID, count: 1 }],

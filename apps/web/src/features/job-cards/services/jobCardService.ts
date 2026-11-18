@@ -9,6 +9,7 @@ import {
   jobStatusEvents,
   serviceRequests,
 } from '@/db/schema';
+import { ApiRequestError } from '@/lib/api/response';
 import { createAuditLog } from '@/lib/audit';
 import { requireTenantPermission } from '@/lib/authorization/guards';
 import type { EligibleStaffMember } from '@/types/jobCards';
@@ -143,7 +144,6 @@ export async function getEligibleStaffMembers(
     .select({
       userId: users.id,
       name: users.name,
-      email: users.email,
       role: users.role,
     })
     .from(users)
@@ -205,7 +205,7 @@ export async function assignJobStaff(
   jobCardId: string,
   input: AssignStaffInput,
 ) {
-  await requireTenantPermission(tenantId, 'jobs.assign');
+  const actor = await requireTenantPermission(tenantId, 'jobs.assign');
 
   const result = await db.transaction(async (tx) => {
     //RS: Job must belong to session tenant - tenantId comes from
@@ -218,7 +218,7 @@ export async function assignJobStaff(
       .limit(1);
 
     if (!job) {
-      throw new Error('Job not found');
+      throw new ApiRequestError('NOT_FOUND', 404, 'Job not found');
     }
 
     const staffChecks: Array<{
@@ -266,7 +266,9 @@ export async function assignJobStaff(
         .limit(1);
 
       if (!staff) {
-        throw new Error(
+        throw new ApiRequestError(
+          'VALIDATION_ERROR',
+          422,
           `Staff member not found or does not have the ${check.requiredRole} role`,
         );
       }
@@ -307,7 +309,11 @@ export async function assignJobStaff(
       entityType: 'job_card',
       entityId: jobCardId,
       previousValue: result.audit.previousValue,
-      newValue: result.audit.newValue,
+      // shortcut: actor_user_id needs a users.id, but sessions only carry the Auth0 id; move this into actorUserId once users are linked to Auth0.
+      newValue: {
+        ...result.audit.newValue,
+        actor: { authUserId: actor.id, email: actor.email },
+      },
     });
   }
 
