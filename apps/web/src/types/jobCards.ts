@@ -12,3 +12,49 @@ export type EligibleStaffMember = {
   role: string;
   activeJobCount: number;
 };
+export type WorkVisibility = 'internal' | 'customer';
+
+// Staff (internal) shapes: include technician and internal entries/notes.
+export type StaffLabourEntry = {
+  id: string;
+  technicianId: string;
+  startedAt: string;
+  endedAt: string;
+  minutes: number;
+  note: string | null;
+  visibility: WorkVisibility;
+};
+
+export type StaffJobNote = {
+  id: string;
+  body: string;
+  visibility: WorkVisibility;
+  createdAt: string;
+};
+
+// Customer shapes: customer-visible items only, no technician or visibility fields.
+export type CustomerLabourEntry = {
+  id: string;
+  startedAt: string;
+  endedAt: string;
+  minutes: number;
+  note: string | null;
+};
+
+export type CustomerJobNote = {
+  id: string;
+  body: string;
+  createdAt: string;
+};
+
+export type JobWork =
+  | {
+      audience: 'staff';
+      labourEntries: StaffLabourEntry[];
+      notes: StaffJobNote[];
+    }
+  | {
+      audience: 'customer';
+      labourEntries: CustomerLabourEntry[];
+      notes: CustomerJobNote[];
+    };

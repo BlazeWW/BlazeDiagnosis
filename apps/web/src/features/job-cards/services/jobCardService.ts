@@ -3,12 +3,7 @@ import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { users } from '@/db/schema/users';
 
 import { db } from '@/db/client';
-import {
-  jobCards,
-  jobNotes,
-  jobStatusEvents,
-  serviceRequests,
-} from '@/db/schema';
+import { jobCards, jobStatusEvents, serviceRequests } from '@/db/schema';
 import { ApiRequestError } from '@/lib/api/response';
 import { createAuditLog } from '@/lib/audit';
 import { requireTenantPermission } from '@/lib/authorization/guards';
@@ -97,32 +92,6 @@ export async function convertServiceRequestToJobCard(
 
     return jobCard;
   });
-}
-
-export async function addJobNote(
-  tenantId: string,
-  jobCardId: string,
-  body: string,
-  visibility: 'internal' | 'customer',
-) {
-  await requireTenantPermission(
-    tenantId,
-    visibility === 'customer'
-      ? 'jobs.add_customer_note'
-      : 'jobs.add_internal_note',
-  );
-
-  const [note] = await db
-    .insert(jobNotes)
-    .values({
-      tenantId,
-      jobCardId,
-      body,
-      visibility,
-    })
-    .returning();
-
-  return note;
 }
 
 export async function getWorkshopBoard(tenantId: string) {
