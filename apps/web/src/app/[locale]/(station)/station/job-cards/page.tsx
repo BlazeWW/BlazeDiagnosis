@@ -9,6 +9,7 @@ import {
   FeatureRecordList,
 } from '@/components/common/featureDashboard';
 import { Button } from '@/components/ui/button';
+import { StaffingPanel } from '@/features/job-cards/components/staffingPanel';
 import { stationChecklist, stationJobRecords } from '@/lib/sampleWorkflows';
 
 export default function StationJobCardsPage() {
@@ -46,6 +47,8 @@ export default function StationJobCardsPage() {
         items={stationChecklist}
         title="Job-card implementation checklist"
       />
+
+      <StaffingPanel />
     </AppShell>
   );
 }

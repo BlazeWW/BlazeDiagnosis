@@ -1,5 +1,6 @@
 import type { ApiResponse } from '@/types/api';
 import type { Customer } from '@/types/customers';
+import type { EligibleStaffMember, JobCardRecord } from '@/types/jobCards';
 import type { VehicleRecord, VehicleServiceHistory } from '@/types/vehicles';
 
 type RequestOptions = RequestInit & {
@@ -137,5 +138,33 @@ export async function fetchVehicleServiceHistory(vehicleId: string) {
   return requestJson<{ history: VehicleServiceHistory }>(
     `/api/vehicles/${vehicleId}/history`,
     { errorMessage: 'Failed to fetch vehicle service history.' },
+  );
+}
+
+//Job Cards
+export async function fetchJobCards() {
+  return requestJson<{ jobCards: JobCardRecord[] }>(`/api/job-cards`, {
+    errorMessage: 'Failed to fetch job cards.',
+  });
+}
+
+export async function fetchEligibleStaff() {
+  return requestJson<{ staff: EligibleStaffMember[] }>('/api/job-cards/staff', {
+    errorMessage: 'Failed to load staff members.',
+  });
+}
+
+export async function assignJobStaff(
+  jobCardId: string,
+  assignments: { mechanicId?: string | null; floorManagerId?: string | null },
+) {
+  return requestJson<{ jobCard: JobCardRecord }>(
+    `/api/job-cards/${jobCardId}/staff`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(assignments),
+      errorMessage: 'Failed to save assignment.',
+    },
   );
 }
