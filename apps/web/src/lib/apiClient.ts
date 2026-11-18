@@ -133,21 +133,9 @@ export async function deleteVehicle(vehicleId: string) {
   );
 }
 
-export async function fetchVehicleServiceHistory(
-  vehicleId: string,
-  options: { audience?: 'customer' | 'staff'; customerId?: string } = {},
-) {
-  const params = new URLSearchParams();
-  if (options.audience) {
-    params.set('audience', options.audience);
-  }
-  if (options.customerId) {
-    params.set('customerId', options.customerId);
-  }
-  const queryString = params.toString();
-
+export async function fetchVehicleServiceHistory(vehicleId: string) {
   return requestJson<{ history: VehicleServiceHistory }>(
-    `/api/vehicles/${vehicleId}/history${queryString ? `?${queryString}` : ''}`,
+    `/api/vehicles/${vehicleId}/history`,
     { errorMessage: 'Failed to fetch vehicle service history.' },
   );
 }

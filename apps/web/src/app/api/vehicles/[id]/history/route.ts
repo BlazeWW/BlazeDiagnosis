@@ -2,27 +2,18 @@ import { getVehicleServiceHistory } from '@/features/vehicles/services/vehicleHi
 import { apiOk, handleApiError } from '@/lib/api/response';
 import { requireTenantContext } from '@/lib/tenancy/tenantContext';
 import type { ApiRouteContext } from '@/types/api';
-import type { VehicleHistoryAudience } from '@/types/vehicles';
 
 const routeName = '/api/vehicles/[id]/history';
 
-export async function GET(request: Request, { params }: ApiRouteContext) {
-    try {
-        const { id } = await params;
-        const tenant = requireTenantContext();
-        const url = new URL(request.url);
-        const audineceParam = url.searchParams.get('audience');
-        const audience: VehicleHistoryAudience = audineceParam === 'customer' ? 'customer' : 'staff';
-        const customerId = url.searchParams.get('customerId') ?? undefined;
+// Staff vs customer view is decided server-side from the session, never from query params.
+export async function GET(_request: Request, { params }: ApiRouteContext) {
+  try {
+    const { id } = await params;
+    const tenant = await requireTenantContext();
+    const history = await getVehicleServiceHistory(tenant.tenantId, id);
 
-        const history = await getVehicleServiceHistory(
-            (await tenant).tenantId,
-            id,
-            audience,
-            customerId
-        );
-        return apiOk({ history });
-    } catch (error) {
-        return handleApiError(`${routeName}`, error);
-    }
+    return apiOk({ history });
+  } catch (error) {
+    return handleApiError(`GET ${routeName}`, error);
+  }
 }

@@ -2,6 +2,7 @@ import { and, desc, eq, inArray } from 'drizzle-orm';
 
 import { db } from '@/db/client';
 import {
+  customers,
   intakeInspections,
   jobCards,
   jobNotes,
@@ -10,7 +11,12 @@ import {
   vehicleOdometerReadings,
   vehicles,
 } from '@/db/schema';
-import { requireTenantPermission } from '@/lib/authorization/guards';
+import { ApiRequestError } from '@/lib/api/response';
+import {
+  requireTenantPermission,
+  TenantAccessError,
+} from '@/lib/authorization/guards';
+import type { SystemRole } from '@/lib/constants/roles';
 
 import type {
   VehicleHistoryAudience,
@@ -20,23 +26,46 @@ import type {
 
 const HISTORY_LIMIT = 50;
 
+// Only these roles see internal history. Every other role must prove it owns the vehicle.
+const STAFF_ROLES: readonly SystemRole[] = [
+  'site_manager',
+  'floor_manager',
+  'mechanic',
+  'platform_admin',
+];
+
+const uuidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 type VehicleRow = typeof vehicles.$inferSelect;
 
 function toIso(value: Date | null | undefined) {
   return value ? value.toISOString() : null;
 }
 
-async function assertCustomerOwnsVehicle(
-  tenantId: string,
-  vehicle: VehicleRow,
-  customerId: string | undefined,
-) {
-  if (!customerId) {
-    throw new Error('Customer ownership could not be verified');
+// The customer is found from the signed-in user (customers.user_id), never from a client-supplied id.
+async function findSessionCustomerId(tenantId: string, userId: string) {
+  // customers.user_id is a UUID; identities that are not UUIDs (e.g. Auth0 ids) cannot be linked.
+  if (!uuidPattern.test(userId)) {
+    return null;
   }
 
+  const [customer] = await db
+    .select({ id: customers.id })
+    .from(customers)
+    .where(and(eq(customers.tenantId, tenantId), eq(customers.userId, userId)))
+    .limit(1);
+
+  return customer?.id ?? null;
+}
+
+async function customerOwnsVehicle(
+  tenantId: string,
+  vehicle: VehicleRow,
+  customerId: string,
+) {
   if (vehicle.primaryCustomerId === customerId) {
-    return;
+    return true;
   }
 
   const [link] = await db
@@ -51,18 +80,18 @@ async function assertCustomerOwnsVehicle(
     )
     .limit(1);
 
-  if (!link) {
-    throw new Error('Vehicle does not belong to this customer.');
-  }
+  return Boolean(link);
 }
 
 export async function getVehicleServiceHistory(
   tenantId: string,
   vehicleId: string,
-  audience: VehicleHistoryAudience = 'staff',
-  customerId?: string,
 ): Promise<VehicleServiceHistory> {
-  await requireTenantPermission(tenantId, 'vehicles.read');
+  const user = await requireTenantPermission(tenantId, 'vehicles.read');
+  const audience: VehicleHistoryAudience =
+    user.tenantRole && STAFF_ROLES.includes(user.tenantRole)
+      ? 'staff'
+      : 'customer';
 
   const [vehicle] = await db
     .select()
@@ -77,11 +106,18 @@ export async function getVehicleServiceHistory(
     .limit(1);
 
   if (!vehicle) {
-    throw new Error('Vehicle not found.');
+    throw new ApiRequestError('NOT_FOUND', 404, 'Vehicle not found.');
   }
 
   if (audience === 'customer') {
-    await assertCustomerOwnsVehicle(tenantId, vehicle, customerId);
+    const customerId = await findSessionCustomerId(tenantId, user.id);
+
+    if (
+      !customerId ||
+      !(await customerOwnsVehicle(tenantId, vehicle, customerId))
+    ) {
+      throw new TenantAccessError('Vehicle does not belong to this customer.');
+    }
   }
 
   const jobRows = await db

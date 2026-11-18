@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const authGuardMock = vi.hoisted(() => ({
   requireTenantPermission: vi.fn(),
+  TenantAccessError: class TenantAccessError extends Error {},
 }));
 const dbMock = vi.hoisted(() => ({
   select: vi.fn(),
@@ -44,10 +45,14 @@ const jobRow = {
   priority: 'normal',
 };
 
+const CUSTOMER_USER_ID = '44444444-4444-4444-8444-444444444444';
+const staffUser = { id: 'auth0|mechanic', tenantRole: 'mechanic' };
+const customerUser = { id: CUSTOMER_USER_ID, tenantRole: 'customer' };
+
 describe('getVehicleServiceHistory', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    authGuardMock.requireTenantPermission.mockResolvedValue(undefined);
+    authGuardMock.requireTenantPermission.mockResolvedValue(staffUser);
   });
 
   it('returns staff history including internal status and notes', async () => {
@@ -84,9 +89,11 @@ describe('getVehicleServiceHistory', () => {
     expect(history.jobs[0].notes).toHaveLength(2);
   });
 
-  it('strips internal fields for the customer audience', async () => {
+  it('gives a customer session the customer view, found from the session', async () => {
+    authGuardMock.requireTenantPermission.mockResolvedValue(customerUser);
     mockSelectSequence([
       [vehicleRow],
+      [{ id: 'customer-1' }],
       [jobRow],
       [
         {
@@ -115,12 +122,7 @@ describe('getVehicleServiceHistory', () => {
       [],
     ]);
 
-    const history = await getVehicleServiceHistory(
-      'tenant-1',
-      'vehicle-1',
-      'customer',
-      'customer-1',
-    );
+    const history = await getVehicleServiceHistory('tenant-1', 'vehicle-1');
 
     expect(history.jobs[0].internalStatus).toBeUndefined();
     expect(history.jobs[0].notes).toHaveLength(1);
@@ -139,24 +141,60 @@ describe('getVehicleServiceHistory', () => {
     expect(history.odometerReadings).toEqual([]);
   });
 
-  it('throws when the vehicle does not exist in the tenant', async () => {
+  it.each([
+    ['does not exist in the tenant', 'missing-vehicle'],
+    ['is archived (deleted link)', 'archived-vehicle'],
+  ])('returns 404 when the vehicle %s', async (_label, vehicleId) => {
+    // The query filters on tenant and isArchived = false, so both cases return no row.
     mockSelectSequence([[]]);
 
     await expect(
-      getVehicleServiceHistory('tenant-1', 'missing-vehicle'),
-    ).rejects.toThrow('Vehicle not found.');
+      getVehicleServiceHistory('tenant-1', vehicleId),
+    ).rejects.toMatchObject({ message: 'Vehicle not found.', status: 404 });
+    expect(dbMock.select).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects customer audience without a matching owner', async () => {
-    mockSelectSequence([[{ ...vehicleRow, primaryCustomerId: 'other-customer' }], []]);
+  it('rejects a former co-owner whose vehicle link was removed', async () => {
+    authGuardMock.requireTenantPermission.mockResolvedValue(customerUser);
+    mockSelectSequence([
+      [{ ...vehicleRow, primaryCustomerId: 'current-owner' }],
+      [{ id: 'former-co-owner' }],
+      [], // vehicle_customers link no longer exists
+    ]);
 
     await expect(
-      getVehicleServiceHistory(
-        'tenant-1',
-        'vehicle-1',
-        'customer',
-        'customer-2',
-      ),
+      getVehicleServiceHistory('tenant-1', 'vehicle-1'),
+    ).rejects.toThrow('does not belong');
+    // Stops after the ownership check: no history queries run.
+    expect(dbMock.select).toHaveBeenCalledTimes(3);
+  });
+
+  it('rejects a customer who does not own the vehicle', async () => {
+    authGuardMock.requireTenantPermission.mockResolvedValue(customerUser);
+    mockSelectSequence([
+      [{ ...vehicleRow, primaryCustomerId: 'other-customer' }],
+      [{ id: 'customer-2' }],
+      [],
+    ]);
+
+    await expect(
+      getVehicleServiceHistory('tenant-1', 'vehicle-1'),
+    ).rejects.toThrow('does not belong');
+  });
+
+  it.each([
+    [
+      'a customer with no linked profile',
+      { id: 'auth0|customer', tenantRole: 'customer' },
+    ],
+    ['a user with no role', { id: CUSTOMER_USER_ID, tenantRole: null }],
+    ['a supplier', { id: CUSTOMER_USER_ID, tenantRole: 'parts_supplier' }],
+  ])('never falls back to the staff view for %s', async (_label, user) => {
+    authGuardMock.requireTenantPermission.mockResolvedValue(user);
+    mockSelectSequence([[vehicleRow], [], []]);
+
+    await expect(
+      getVehicleServiceHistory('tenant-1', 'vehicle-1'),
     ).rejects.toThrow('does not belong');
   });
 
