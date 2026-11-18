@@ -49,7 +49,7 @@ export default function HomePage() {
         <ThemeToggle />
       </div>
 
-      <section className="grid min-h-[44rem] items-center gap-8 rounded-3xl border border-border/80 bg-card/80 p-6 shadow-soft backdrop-blur lg:grid-cols-[1.1fr_0.9fr] lg:p-10">
+      <section className="grid min-h-176 items-center gap-8 rounded-3xl border border-border/80 bg-card/80 p-6 shadow-soft backdrop-blur lg:grid-cols-[1.1fr_0.9fr] lg:p-10">
         <div className="space-y-6">
           <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Blaze Diagnostics MVP
@@ -75,19 +75,23 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+        {/* Formats a perfectly balanced 2x2 grid layout block */}
+        <div className="mx-auto grid w-full max-w-xl gap-4 grid-cols-2">
           {capabilities.map((item) => {
             const Icon = item.icon;
 
             return (
-              <Card className="bg-muted/40" key={item.label}>
-                <CardContent className="flex items-center gap-3 p-4">
-                  <span className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                    <Icon className="size-5" />
-                  </span>
-                  <span className="text-sm font-semibold text-foreground">{item.label}</span>
-                </CardContent>
-              </Card>
+              <div 
+                className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border/80 bg-muted/40 p-6 text-center min-h-36 transition-colors" 
+                key={item.label}
+              >
+                <span className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shrink-0">
+                  <Icon className="size-5" />
+                </span>
+                <span className="text-sm font-semibold text-foreground tracking-tight max-w-40">
+                  {item.label}
+                </span>
+              </div>
             );
           })}
         </div>
