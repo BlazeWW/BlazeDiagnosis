@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  CUSTOMER_CONCERN_MAX_LENGTH,
   createServiceRequestSchema,
+  CUSTOMER_CONCERN_MAX_LENGTH,
   JOB_STATUS_REASON_MAX_LENGTH,
   SERVICE_DESCRIPTION_MAX_LENGTH,
   updateJobStatusSchema,
@@ -67,7 +67,7 @@ describe('createServiceRequestSchema', () => {
 describe('updateJobStatusSchema', () => {
   const validPayload = {
     targetInternalStatus: 'vehicle_received',
-    expectedUpdatedAt: '2026-11-17T10:00:00.000Z',
+    expectedStatusVersion: 4,
   };
 
   it('accepts a valid target and concurrency token with an optional reason', () => {
@@ -86,7 +86,7 @@ describe('updateJobStatusSchema', () => {
     ).toBe('Customer requested cancellation.');
   });
 
-  it('rejects invalid status, timestamp, blank or oversized reasons', () => {
+  it('rejects invalid status, version, blank or oversized reasons', () => {
     expect(
       updateJobStatusSchema.safeParse({
         ...validPayload,
@@ -96,7 +96,13 @@ describe('updateJobStatusSchema', () => {
     expect(
       updateJobStatusSchema.safeParse({
         ...validPayload,
-        expectedUpdatedAt: 'not-a-timestamp',
+        expectedStatusVersion: -1,
+      }).success,
+    ).toBe(false);
+    expect(
+      updateJobStatusSchema.safeParse({
+        ...validPayload,
+        expectedStatusVersion: 1.5,
       }).success,
     ).toBe(false);
     expect(

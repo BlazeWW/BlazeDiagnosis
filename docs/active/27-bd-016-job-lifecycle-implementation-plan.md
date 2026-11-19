@@ -5,7 +5,7 @@
 **Area:** Diagnostics  
 **Suggested level:** Y2  
 **Priority:** P0  
-**Status:** Planning; confirm transition and role rules with the technical lead before implementation
+**Status:** In implementation; technical lead delegated remaining lifecycle details to implementation judgment
 
 ## Outcome
 
@@ -22,6 +22,8 @@ details.
 - [`apps/web/src/db/schema/jobs.ts`](../../apps/web/src/db/schema/jobs.ts)
   defines `jobCards` and `jobStatusEvents`. Events already have `fromStatus`,
   `toStatus`, `statusType`, `note`, `createdByUserId`, and `createdAt` fields.
+  A nullable `actorIdentity` field records the trusted session subject because
+  the Auth0 subject is not the UUID referenced by `createdByUserId`.
 - [`apps/web/src/features/job-cards/services/jobCardService.ts`](../../apps/web/src/features/job-cards/services/jobCardService.ts)
   contains existing job-card service operations and tenant permission checks.
 - [`apps/web/src/features/audit/services/auditService.ts`](../../apps/web/src/features/audit/services/auditService.ts)
@@ -45,35 +47,35 @@ details.
 **Exit check:** Baseline and scope are recorded; no existing transition or
 timeline implementation is assumed complete without verification.
 
-### 2. Agree on states, transitions, and role ownership
+### 2. Define conservative states, transitions, and role ownership
 
 1. Review the existing internal and customer status enums.
-2. With the BlazeWebWorks technical lead, define each permitted
-   `fromStatus → toStatus` edge and the role/permission allowed to perform it.
-3. Define cancellation, completion, reversal, and any required reason or
-   prerequisite rules. Decide how each internal transition maps to a
-   customer-visible status.
-4. Record the approved rules in a transition table before implementing them.
+2. The technical lead delegated the remaining lifecycle details to
+   implementation judgment. Use the conservative graph and customer-status
+   mapping documented in
+   [`09-api-and-data-contracts.md`](09-api-and-data-contracts.md); do not infer
+   edges from enum ordering.
+3. Use `jobs.update_status` for status edits. Require an active tenant
+   `site_manager` or `floor_manager` for cancel, reopen, and reverse completion.
+   Require reasons for cancel, reopen, reverse completion, and QC failure.
+4. Derive customer status from internal status and only create customer
+   timeline events when the mapped customer status changes.
 
-| From status | To status | Required role/permission | Reason or prerequisite | Customer-visible event |
-|---|---|---|---|---|
-| Complete from the approved lifecycle | Complete from the approved lifecycle | Confirm with technical lead | Confirm with technical lead | Confirm with technical lead |
-
-**Exit check:** Transition graph, owner roles, reason rules, and customer
-visibility are approved. Do not invent transition edges from enum ordering.
+**Exit check:** The chosen transition table, manager restrictions, exceptional
+reason rules, and customer-safe mapping are documented and covered by tests.
 
 ### 3. Define the mutation and event contract
 
-1. Define a strict DTO for the requested target state, reason, and concurrency
-   token (for example, expected current state or version).
-2. Choose and document the status mutation route and response/error envelope.
-3. Confirm whether the existing event `note` field will hold the reason or a
-   schema change is needed.
+1. Use the strict DTO in `jobCardSchema.ts`: target state, expected status
+   version, and optional reason.
+2. Use `PATCH /api/job-cards/[id]/status` and the standard response envelope.
+3. Store the reason in the internal event `note`; store the verified session
+   subject in `actorIdentity`.
 4. Resolve the actor and tenant from trusted server context; never accept
    client-provided `tenantId` or actor identity.
 
 **Exit check:** DTO, route, conflict behavior, and event representation are
-documented before implementation.
+implemented and documented.
 
 ### 4. Implement authorized, tenant-scoped state transitions
 

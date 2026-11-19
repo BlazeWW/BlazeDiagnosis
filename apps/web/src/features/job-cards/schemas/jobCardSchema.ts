@@ -29,7 +29,7 @@ export const createServiceRequestSchema: z.ZodType<CreateServiceRequestInputDto>
 export const updateJobStatusSchema = z
   .object({
     targetInternalStatus: z.enum(jobInternalStatusEnum.enumValues),
-    expectedUpdatedAt: z.string().datetime(),
+    expectedStatusVersion: z.number().int().nonnegative(),
     reason: z
       .string()
       .trim()
