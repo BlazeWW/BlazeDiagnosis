@@ -30,7 +30,7 @@ Track which pages are present, which are demo-safe only, and what must happen be
 
 | Page | Current state | Next required work |
 |---|---|---|
-| `/[locale]/station` | Present | Replace metrics with tenant-aware dashboard queries. |
+| `/[locale]/station` | Present, live data (BD-008) | Metrics and attention queues load from tenant-scoped queries (see `27-station-dashboard-metrics.md`). Remaining: production auth roles, payment-aware outstanding totals. |
 | `/[locale]/station/customers` | Present | Confirm pagination, search, duplicate warnings, and API contract. |
 | `/[locale]/station/customers/new` | Present | Persist customer + vehicle wizard to production services. |
 | `/[locale]/station/customers/[id]` | Present after build fix | Connect detail components to production customer service and guard access. |
