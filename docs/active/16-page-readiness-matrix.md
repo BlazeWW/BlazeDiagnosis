@@ -36,7 +36,7 @@ Track which pages are present, which are demo-safe only, and what must happen be
 | `/[locale]/station/customers/[id]` | Present after build fix | Connect detail components to production customer service and guard access. |
 | `/[locale]/station/vehicles` | Present | Confirm vehicle search and filter UX. |
 | `/[locale]/station/vehicles/[id]` | Present after build fix | Connect detail components to production vehicle service and guard access. |
-| `/[locale]/station/job-cards` | Present, demo data; staff assignment live via API (BD-014); tenant-scoped service-request create/list/detail API (`/api/service-requests`) available, not UI-integrated | Integrate the service-request API; implement job card status changes and timeline; confirm remaining demo data. |
+| `/[locale]/station/job-cards` | Present, demo data; staff assignment live via API (BD-014); tenant-scoped service-request create/list/detail API (`/api/service-requests`) available, not UI-integrated; labour tracking and technician notes panel (BD-020, migration `0006_job_labour_entries.sql`) | Integrate the service-request API; labour corrections UI (API only today); job card status changes and timeline; confirm remaining demo data. |
 | `/[locale]/station/quotes` | Present | Standardize quote list and connect to database. |
 | `/[locale]/station/quotes/new` | Present | Persist quote builder, revisions, and customer send flow. |
 | `/[locale]/station/invoices` | Present, layout refined | Connect metrics/register to invoice services and payment state. |

@@ -92,6 +92,10 @@ Scope note: Quote, invoice, and parts-request `[id]` routes do not yet exist in 
 - [ ] `/api/parts-requests`
 - [ ] `/api/supplier-responses`
 - [ ] `/api/tenant-branding`
+- [ ] `/api/job-cards/[id]/work`
+- [ ] `/api/job-cards/[id]/labour`
+- [ ] `/api/job-cards/[id]/labour/[entryId]`
+- [ ] `/api/job-cards/[id]/notes`
 
 ## Temporary aliases to remove later
 
@@ -306,3 +310,23 @@ pending product-lead confirmation._
   saved total should drop when a line is declined is pending a product decision.
 - **Never** use `* 0.15`, `toFixed` or `Math.round` on rand amounts in new code. Use the
   functions in `cents.ts`.
+
+## Labour tracking and technician notes (BD-020)
+
+Table `job_labour_entries` (schema in `db/schema/jobs.ts`; migration `drizzle/0006_job_labour_entries.sql`).
+
+| Route | Method | Permission | Notes |
+| --- | --- | --- | --- |
+| `/api/job-cards/[id]/work` | GET | `jobs.read` | Labour entries + notes. Staff vs customer view decided from the session role. |
+| `/api/job-cards/[id]/labour` | POST | `jobs.update_status` | Log time: `technicianId`, `startedAt`, `endedAt` (ISO), optional `note`, `visibility` (default `internal`). |
+| `/api/job-cards/[id]/labour/[entryId]` | PATCH | `jobs.update_status` | Correct an entry; `reason` required plus at least one changed field. |
+| `/api/job-cards/[id]/notes` | POST | `jobs.add_internal_note` / `jobs.add_customer_note` | `body`, `visibility` (default `internal`). |
+
+Rules:
+
+- Job card and technician (`mechanic` role) must belong to the session tenant: 404 / 422 otherwise.
+- `endedAt` must be at least one minute after `startedAt` (422); minutes are calculated on the server.
+- A technician cannot have overlapping time across job cards (409). Checked in code; add a Postgres exclusion constraint with the migration to also stop simultaneous saves.
+- Corrections update the row in place. `audit_logs` (`job_card.labour_corrected`) keeps the previous values, new values and the reason. This is the correction history.
+- Customers only receive items marked `customer` on their own job card. No internal notes, internal labour or technician ids (`jobWorkSerializers.ts`). Other non-staff users get 403.
+- The audit actor is stored in `newValue.actor` (Auth0 id + email) until Auth0 ids are linked to `users`.
