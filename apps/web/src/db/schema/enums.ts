@@ -51,6 +51,7 @@ export const jobCustomerStatusEnum = pgEnum('job_customer_status', [
   'invoice_ready',
   'ready_for_collection',
   'completed',
+  'cancelled',
 ]);
 export const visibilityEnum = pgEnum('visibility', [
   'internal',

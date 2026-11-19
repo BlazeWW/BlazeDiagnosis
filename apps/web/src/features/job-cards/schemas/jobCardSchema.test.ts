@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   CUSTOMER_CONCERN_MAX_LENGTH,
   createServiceRequestSchema,
+  JOB_STATUS_REASON_MAX_LENGTH,
   SERVICE_DESCRIPTION_MAX_LENGTH,
+  updateJobStatusSchema,
 } from './jobCardSchema';
 
 const validPayload = {
@@ -57,6 +59,69 @@ describe('createServiceRequestSchema', () => {
       createServiceRequestSchema.safeParse({
         ...validPayload,
         preferredDate: 'not-a-date',
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe('updateJobStatusSchema', () => {
+  const validPayload = {
+    targetInternalStatus: 'vehicle_received',
+    expectedUpdatedAt: '2026-11-17T10:00:00.000Z',
+  };
+
+  it('accepts a valid target and concurrency token with an optional reason', () => {
+    expect(updateJobStatusSchema.parse(validPayload)).toEqual(validPayload);
+    expect(
+      updateJobStatusSchema.parse({
+        ...validPayload,
+        targetInternalStatus: 'cancelled',
+      }).targetInternalStatus,
+    ).toBe('cancelled');
+    expect(
+      updateJobStatusSchema.parse({
+        ...validPayload,
+        reason: '  Customer requested cancellation.  ',
+      }).reason,
+    ).toBe('Customer requested cancellation.');
+  });
+
+  it('rejects invalid status, timestamp, blank or oversized reasons', () => {
+    expect(
+      updateJobStatusSchema.safeParse({
+        ...validPayload,
+        targetInternalStatus: 'made_up_status',
+      }).success,
+    ).toBe(false);
+    expect(
+      updateJobStatusSchema.safeParse({
+        ...validPayload,
+        expectedUpdatedAt: 'not-a-timestamp',
+      }).success,
+    ).toBe(false);
+    expect(
+      updateJobStatusSchema.safeParse({ ...validPayload, reason: '  ' })
+        .success,
+    ).toBe(false);
+    expect(
+      updateJobStatusSchema.safeParse({
+        ...validPayload,
+        reason: 'x'.repeat(JOB_STATUS_REASON_MAX_LENGTH + 1),
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects client-supplied tenant and actor identity fields', () => {
+    expect(
+      updateJobStatusSchema.safeParse({
+        ...validPayload,
+        tenantId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      }).success,
+    ).toBe(false);
+    expect(
+      updateJobStatusSchema.safeParse({
+        ...validPayload,
+        actorId: '11111111-1111-4111-8111-111111111111',
       }).success,
     ).toBe(false);
   });
