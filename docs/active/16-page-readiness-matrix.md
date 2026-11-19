@@ -20,7 +20,7 @@ Track which pages are present, which are demo-safe only, and what must happen be
 |---|---|---|
 | `/[locale]/customer` | Present | Connect to authenticated customer dashboard service. |
 | `/[locale]/customer/vehicles` | Present, demo data | Load customer vehicles by authenticated customer. |
-| `/[locale]/customer/services` | Present, demo data | Load active and historical service jobs. |
+| `/[locale]/customer/services` | Present, needs auth (BD-037) | Service history loads from the database through `serviceHistoryService` and `GET /api/customer/service-history`, scoped to the session tenant and the customer linked to the signed-in user (`customers.user_id`). Needs production Auth0 sign-in for customers and a way for staff to link a customer profile to a user. |
 | `/[locale]/customer/quotes` | Present, demo data | Load active quotes and approval status. |
 | `/[locale]/customer/invoices` | Present | Confirm API/data consistency and tenant/customer authorization. |
 | `/[locale]/customer/invoices/[id]` | Present | Confirm invoice ownership guard and PDF/download flow. |
@@ -30,7 +30,7 @@ Track which pages are present, which are demo-safe only, and what must happen be
 
 | Page | Current state | Next required work |
 |---|---|---|
-| `/[locale]/station` | Present | Replace metrics with tenant-aware dashboard queries. |
+| `/[locale]/station` | Present, live data (BD-008) | Metrics and attention queues load from tenant-scoped queries (see `27-station-dashboard-metrics.md`). Remaining: production auth roles, payment-aware outstanding totals. |
 | `/[locale]/station/customers` | Present | Confirm pagination, search, duplicate warnings, and API contract. |
 | `/[locale]/station/customers/new` | Present | Persist customer + vehicle wizard to production services. |
 | `/[locale]/station/customers/[id]` | Present after build fix | Connect detail components to production customer service and guard access. |
