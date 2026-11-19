@@ -5,6 +5,7 @@ import {
 } from '@/features/customers/services/customerService';
 import { apiCreated, apiOk, handleApiError } from '@/lib/api/response';
 import { requireTenantContext } from '@/lib/tenancy/tenantContext';
+import { TenantAccessError } from '@/lib/authorization/guards';
 
 const routeName = '/api/customers';
 
@@ -24,7 +25,13 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const tenant = await requireTenantContext();
-    const input = createCustomerSchema.parse(await request.json());
+    const rawBody = await request.json();
+
+    if (rawBody.tenantId && rawBody.tenantId !== tenant.tenantId) {
+      throw new TenantAccessError('Submitted tenant ID conflicts with authenticated session tenant.');
+    }
+
+    const input = createCustomerSchema.parse(rawBody);
     const customer = await createCustomer(tenant.tenantId, input);
 
     return apiCreated({ customer });

@@ -98,9 +98,9 @@ The authorized service and tenant-scoped API routes now use this adapter.
 2. Require `jobs.create` for creation and `jobs.read` for list/detail operations.
 3. Resolve tenant context on the server for every request; reject client-supplied tenant IDs through the strict contract.
 4. Implement:
-   - `POST /api/job-cards` — create and return the standardized `201` envelope.
-   - `GET /api/job-cards` — return the tenant’s list and count metadata.
-   - `GET /api/job-cards/[id]` — return a tenant-scoped record or `404` for missing/foreign IDs.
+   - `POST /api/service-requests` — create and return the standardized `201` envelope.
+   - `GET /api/service-requests` — return the tenant’s list and count metadata.
+   - `GET /api/service-requests/[id]` — return a tenant-scoped record or `404` for missing/foreign IDs.
 5. Map validation, forbidden, relationship, and not-found failures to explicit standard API responses.
 
 **Exit check:** Route tests verify tenant context and permission-protected service calls, response envelopes, invalid input rejection, and foreign-tenant non-disclosure.
@@ -165,7 +165,7 @@ The job-card page’s data binding, job status transitions, staff assignment, cu
 ## Verification record — 2026-11-12
 
 - Focused job-card verification:
-  `pnpm --filter @blaze-diagnostics/web exec vitest run src/app/api/job-cards/route.test.ts src/app/api/job-cards/[id]/route.test.ts src/features/job-cards/services/jobCardService.test.ts src/features/job-cards/repositories/mockServiceRequestRepository.test.ts src/features/job-cards/repositories/databaseServiceRequestRepository.test.ts src/features/job-cards/schemas/jobCardSchema.test.ts`
+  `pnpm --filter @blaze-diagnostics/web exec vitest run src/app/api/service-requests/route.test.ts src/app/api/service-requests/[id]/route.test.ts src/features/job-cards/services/jobCardService.test.ts src/features/job-cards/repositories/mockServiceRequestRepository.test.ts src/features/job-cards/repositories/databaseServiceRequestRepository.test.ts src/features/job-cards/schemas/jobCardSchema.test.ts`
   — passed (6 files, 30 tests). The API contract test uses the local fixture
   adapter; this is not a live database demonstration.
 - `pnpm lint` — failed: 9 existing errors in PartsCatalog, SuppliersPanel,

@@ -64,8 +64,8 @@ Blaze Diagnostics is now past a pure MVP prototype, but it is not production-rea
 
 ## Confirmed job-card persistence behavior
 
-- [x] Tenant-scoped `POST /api/job-cards`, `GET /api/job-cards`, and
-      `GET /api/job-cards/[id]` routes are implemented and covered by tests using
+- [x] Tenant-scoped `POST /api/service-requests`, `GET /api/service-requests`, and
+      `GET /api/service-requests/[id]` routes are implemented and covered by tests using
       the local fixture adapter.
 - [x] The focused job-card suite passes: 6 test files, 30 tests.
 - [ ] The station job-card page still uses demo data and is not integrated with

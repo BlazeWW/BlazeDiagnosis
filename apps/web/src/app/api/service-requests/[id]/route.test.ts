@@ -23,7 +23,7 @@ import { GET } from './route';
 const tenantId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const serviceRequestId = '77777777-7777-4777-8777-777777777777';
 
-describe('/api/job-cards/[id]', () => {
+describe('/api/service-requests/[id]', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     tenantContextMock.requireTenantContext.mockResolvedValue({ tenantId });
@@ -35,7 +35,7 @@ describe('/api/job-cards/[id]', () => {
     });
 
     const response = await GET(
-      new Request(`http://localhost/api/job-cards/${serviceRequestId}`),
+      new Request(`http://localhost/api/service-requests/${serviceRequestId}`),
       routeContext({ id: serviceRequestId }),
     );
 
@@ -54,7 +54,7 @@ describe('/api/job-cards/[id]', () => {
     jobCardServiceMock.getServiceRequestById.mockResolvedValue(null);
 
     const response = await GET(
-      new Request(`http://localhost/api/job-cards/${serviceRequestId}`),
+      new Request(`http://localhost/api/service-requests/${serviceRequestId}`),
       routeContext({ id: serviceRequestId }),
     );
 
@@ -71,7 +71,7 @@ describe('/api/job-cards/[id]', () => {
     );
 
     const response = await GET(
-      new Request(`http://localhost/api/job-cards/${serviceRequestId}`),
+      new Request(`http://localhost/api/service-requests/${serviceRequestId}`),
       routeContext({ id: serviceRequestId }),
     );
 
@@ -84,7 +84,7 @@ describe('/api/job-cards/[id]', () => {
 
   it('returns validation errors for malformed record IDs', async () => {
     const response = await GET(
-      new Request('http://localhost/api/job-cards/not-a-uuid'),
+      new Request('http://localhost/api/service-requests/not-a-uuid'),
       routeContext({ id: 'not-a-uuid' }),
     );
 
