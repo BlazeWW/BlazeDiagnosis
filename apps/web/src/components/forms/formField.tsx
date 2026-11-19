@@ -14,18 +14,22 @@ export function FormField({
 }: FormFieldProps) {
   const descriptionId = description ? `${id}-description` : undefined;
   const errorId = error ? `${id}-error` : undefined;
-  const ariaDescribedBy = [descriptionId, errorId].filter(Boolean).join(' ') || undefined; 
+  const ariaDescribedBy = [descriptionId, errorId].filter(Boolean).join(' ') || undefined;
 
   return (
     <div className={cn('grid gap-2', className)}>
       <Label htmlFor={id}>{label}</Label>
 
       {React.isValidElement(children)
-        ? React.cloneElement(children as React.ReactElement<any>, {
-            'aria-describedby': ariaDescribedBy,
-          })
+        ? React.cloneElement(
+            children as React.ReactElement<React.AriaAttributes>,
+            {
+              'aria-describedby': ariaDescribedBy,
+              'aria-invalid': error ? true : undefined,
+            },
+          )
         : children}
-        
+
       {description ? (
         <p className="text-sm text-muted-foreground" id={descriptionId}>
           {description}
