@@ -3,7 +3,7 @@
 **Priority:** P0  
 **Year:** Y2  
 **Owner:** One intern  
-**Status:** Stage 3 implemented; production service/API wiring remains
+**Status:** Stages 3–4 implemented; demonstration and quality gates remain
 **Issue:** BD-015 (link the reviewed PR to the GitHub issue ID when the issue is available)
 
 ## Objective
@@ -82,7 +82,7 @@ The mock must apply the same tenant and relationship rules as the database imple
 
 The database adapter is implemented in
 `apps/web/src/features/job-cards/repositories/databaseServiceRequestRepository.ts`.
-It is not wired into the production service/API path; that is Stage 4.
+The authorized service and tenant-scoped API routes now use this adapter.
 
 1. Add a database repository behind the same interface.
 2. Within a transaction, verify the active customer and vehicle using both entity ID and tenant ID, and verify that the vehicle belongs to the selected customer.
