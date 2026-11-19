@@ -3,14 +3,18 @@ import Link from 'next/link';
 import { PlusCircle } from 'lucide-react';
 
 import { AppShell } from '@/components/common/appShell';
-import {
-  FeatureChecklist,
-  FeatureMetricGrid,
-  FeatureRecordList,
-} from '@/components/common/featureDashboard';
+import { FeatureChecklist } from '@/components/common/featureDashboard';
 import { Button } from '@/components/ui/button';
+import { JobCardOverview } from '@/features/job-cards/components/jobCardOverview';
 import { StaffingPanel } from '@/features/job-cards/components/staffingPanel';
-import { stationChecklist, stationJobRecords } from '@/lib/sampleWorkflows';
+import type { FeatureChecklistItem } from '@/types/featureDashboard';
+
+const jobCardChecklist: FeatureChecklistItem[] = [
+  { completed: true, label: 'Replace demo data with tenant-aware job card and service request queries.' },
+  { completed: true, label: 'Assign mechanics and floor managers from the staffing panel.' },
+  { completed: false, label: 'Add status transition actions and timeline to each job card.' },
+  { completed: false, label: 'Create service requests from the page instead of the intake flow.' },
+];
 
 export default function StationJobCardsPage() {
   return (
@@ -27,24 +31,11 @@ export default function StationJobCardsPage() {
       surface="station"
       title="Job cards"
     >
-      <FeatureMetricGrid
-        items={[
-          { description: 'All active workshop jobs', label: 'Open jobs', value: '18' },
-          { description: 'No mechanic assigned yet', label: 'Unassigned', value: '3' },
-          { description: 'Parts or customer blockers', label: 'Blocked', value: '5' },
-          { description: 'Ready for final review', label: 'Ready for QC', value: '4' },
-        ]}
-      />
-
-      <FeatureRecordList
-        description="A practical job queue that lets floor managers move work forward without relying on demo placeholders."
-        items={stationJobRecords}
-        title="Workshop action queue"
-      />
+      <JobCardOverview />
 
       <FeatureChecklist
         description="These checks define the next production implementation work for job cards."
-        items={stationChecklist}
+        items={jobCardChecklist}
         title="Job-card implementation checklist"
       />
 

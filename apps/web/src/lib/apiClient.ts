@@ -1,6 +1,10 @@
 import type { ApiResponse } from '@/types/api';
 import type { Customer } from '@/types/customers';
-import type { EligibleStaffMember, JobCardRecord } from '@/types/jobCards';
+import type {
+  EligibleStaffMember,
+  JobCardRecord,
+  ServiceRequestRecord,
+} from '@/types/jobCards';
 import type { VehicleRecord, VehicleServiceHistory } from '@/types/vehicles';
 
 type RequestOptions = RequestInit & {
@@ -146,6 +150,13 @@ export async function fetchJobCards() {
   return requestJson<{ jobCards: JobCardRecord[] }>(`/api/job-cards`, {
     errorMessage: 'Failed to fetch job cards.',
   });
+}
+
+export async function fetchServiceRequests() {
+  return requestJson<{ serviceRequests: ServiceRequestRecord[] }>(
+    '/api/service-requests',
+    { errorMessage: 'Failed to fetch service requests.' },
+  );
 }
 
 export async function fetchEligibleStaff() {
