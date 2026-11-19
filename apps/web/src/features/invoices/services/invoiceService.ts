@@ -8,6 +8,7 @@ import {
   quotes,
 } from '@/db/schema';
 import { requireTenantPermission } from '@/lib/authorization/guards';
+import { calculateDocumentTotals, centsToString } from '@/lib/money/cents';
 import writeAudit from '@/lib/auditWriter'; 
 import { createInvoiceNotificationRecord } from '@/features/notifications/services/notificationService';
 
@@ -71,25 +72,14 @@ export async function createInvoiceFromApprovedQuote(
       );
     }
 
-    // 3. Mathematical precision calculations for lines
-    const totals = billableItems.reduce(
-      (acc, item) => {
-        const quantity = Number(item.quantity);
-        const unitPrice = Number(item.unitPrice);
-        const discount = Number(item.discount ?? 0);
-        const taxRate = Number(item.taxRate ?? 0);
-        const lineSubtotal = quantity * unitPrice;
-        const discountedSubtotal = Math.max(lineSubtotal - discount, 0);
-        const tax = discountedSubtotal * (taxRate / 100);
-
-        acc.subtotal += lineSubtotal;
-        acc.discountTotal += discount;
-        acc.taxTotal += tax;
-        acc.total += discountedSubtotal + tax;
-
-        return acc;
-      },
-      { subtotal: 0, taxTotal: 0, discountTotal: 0, total: 0 },
+    // 3. Totals in whole cents via the shared money module (BD-025)
+    const totals = calculateDocumentTotals(
+      billableItems.map((item) => ({
+        discount: item.discount,
+        quantity: item.quantity,
+        taxRate: item.taxRate,
+        unitPrice: item.unitPrice,
+      })),
     );
 
     // 4. Create the primary parent Invoice record
@@ -101,10 +91,10 @@ export async function createInvoiceFromApprovedQuote(
         customerId: quote.customerId,
         invoiceNumber: `INV-${Date.now()}`,
         status: 'draft',
-        subtotal: toMoneyString(totals.subtotal),
-        taxTotal: toMoneyString(totals.taxTotal),
-        discountTotal: toMoneyString(totals.discountTotal),
-        total: toMoneyString(totals.total),
+        subtotal: centsToString(totals.subtotal),
+        taxTotal: centsToString(totals.taxTotal),
+        discountTotal: centsToString(totals.discountTotal),
+        total: centsToString(totals.total),
       })
       .returning();
 
@@ -153,8 +143,4 @@ export async function createInvoiceFromApprovedQuote(
 
     return invoice;
   });
-}
-
-function toMoneyString(value: number) {
-  return (Math.round((value + Number.EPSILON) * 100) / 100).toFixed(2);
 }
