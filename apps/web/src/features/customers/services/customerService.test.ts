@@ -83,6 +83,7 @@ describe('customerService', () => {
   });
 
   it('updates customer records with tenant scoping', async () => {
+    mockSelectLimitSequence([[{ id: 'customer-1', tenantId: 'tenant-1', isArchived: false }]]);
     dbMock.update.mockReturnValue({
       set: vi.fn(() => ({
         where: vi.fn(() => ({
@@ -97,7 +98,8 @@ describe('customerService', () => {
   });
 
   it('archives customers instead of hard deleting them', async () => {
-    const where = vi.fn(() => Promise.resolve());
+    const returning = vi.fn(() => Promise.resolve([{ id: 'customer-1' }]));
+    const where = vi.fn(() => ({ returning }));
     const set = vi.fn(() => ({ where }));
     dbMock.update.mockReturnValue({ set });
 
