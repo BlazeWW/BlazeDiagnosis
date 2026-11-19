@@ -36,12 +36,12 @@ Track which pages are present, which are demo-safe only, and what must happen be
 | `/[locale]/station/customers/[id]` | Present after build fix | Connect detail components to production customer service and guard access. |
 | `/[locale]/station/vehicles` | Present | Confirm vehicle search and filter UX. |
 | `/[locale]/station/vehicles/[id]` | Present after build fix | Connect detail components to production vehicle service and guard access. |
-| `/[locale]/station/job-cards` | Present; staff assignment live via API (BD-014); labour tracking and technician notes panel (BD-020, needs the `job_labour_entries` migration) | **Needs a DB migration (lead approval)** for `job_labour_entries`; corrections UI (API only today); job card status changes and timeline; confirm remaining demo data. |
+| `/[locale]/station/job-cards` | Present, demo data; staff assignment live via API (BD-014); tenant-scoped service-request create/list/detail API (`/api/service-requests`) available, not UI-integrated; labour tracking and technician notes panel (BD-020, migration `0006_job_labour_entries.sql`) | Integrate the service-request API; labour corrections UI (API only today); job card status changes and timeline; confirm remaining demo data. |
 | `/[locale]/station/quotes` | Present | Standardize quote list and connect to database. |
 | `/[locale]/station/quotes/new` | Present | Persist quote builder, revisions, and customer send flow. |
 | `/[locale]/station/invoices` | Present, layout refined | Connect metrics/register to invoice services and payment state. |
 | `/[locale]/station/invoices/[id]` | Present, layout refined | Connect actions to invoice services and branded document generation. |
-| `/[locale]/station/parts` | Present, demo data | Implement parts requests, supplier comparison, and order status. |
+| `/[locale]/station/parts` | Present, demo data; supplier comparison service + `GET /api/supplier-responses` (staff only) | **Needs a DB migration (lead approval):** add currency, payable total, tax treatment and unit columns to supplier responses so real offers can be ranked; wire the page to live data; parts requests and order status. |
 | `/[locale]/station/reports` | Present, demo data | Build report query services and export options. |
 | `/[locale]/station/settings/branding` | Present | Persist branding to database and add logo upload. |
 | `/[locale]/station/showcase` | Demo page | Gate behind development flag or remove before production. |

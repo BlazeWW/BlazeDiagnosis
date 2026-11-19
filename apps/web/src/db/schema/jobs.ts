@@ -96,6 +96,7 @@ export const jobCards = pgTable(
     customerStatus: jobCustomerStatusEnum('customer_status')
       .notNull()
       .default('request_received'),
+    statusVersion: integer('status_version').notNull().default(0),
     priority: varchar('priority', { length: 40 }).notNull().default('normal'),
     assignedMechanicId: uuid('assigned_mechanic_id').references(() => users.id),
     assignedFloorManagerId: uuid('assigned_floor_manager_id').references(
@@ -133,6 +134,7 @@ export const jobStatusEvents = pgTable('job_status_events', {
   statusType: varchar('status_type', { length: 40 }).notNull(),
   note: text('note'),
   createdByUserId: uuid('created_by_user_id').references(() => users.id),
+  actorIdentity: text('actor_identity'),
   createdAt: timestamp('created_at', { withTimezone: true })
     .defaultNow()
     .notNull(),

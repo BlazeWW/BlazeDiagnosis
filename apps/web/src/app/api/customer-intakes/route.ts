@@ -9,6 +9,7 @@ import {
   requireSearchParam,
 } from '@/lib/api/response';
 import { requireTenantContext } from '@/lib/tenancy/tenantContext';
+import { TenantAccessError } from '@/lib/authorization/guards';
 
 const routeName = '/api/customer-intakes';
 
@@ -31,7 +32,13 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const tenant = await requireTenantContext();
-    const input = customerVehicleIntakeSchema.parse(await request.json());
+    const rawBody = await request.json();
+
+    if (rawBody.tenantId && rawBody.tenantId !== tenant.tenantId) {
+      throw new TenantAccessError('Submitted tenant ID conflicts with authenticated session tenant.');
+    }
+
+    const input = customerVehicleIntakeSchema.parse(rawBody);
     const intake = await createCustomerVehicleIntake(tenant.tenantId, input);
 
     return apiCreated({ intake });
