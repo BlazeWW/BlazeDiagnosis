@@ -3,7 +3,11 @@ import type { Customer } from '@/types/customers';
 import type {
   EligibleStaffMember,
   JobCardRecord,
+  JobWork,
   ServiceRequestRecord,
+  StaffJobNote,
+  StaffLabourEntry,
+  WorkVisibility,
 } from '@/types/jobCards';
 import type { VehicleRecord, VehicleServiceHistory } from '@/types/vehicles';
 
@@ -176,6 +180,48 @@ export async function assignJobStaff(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(assignments),
       errorMessage: 'Failed to save assignment.',
+    },
+  );
+}
+
+export async function fetchJobWork(jobCardId: string) {
+  return requestJson<{ work: JobWork }>(`/api/job-cards/${jobCardId}/work`, {
+    errorMessage: 'Failed to load labour and notes.',
+  });
+}
+
+export async function addLabourEntry(
+  jobCardId: string,
+  entry: {
+    technicianId: string;
+    startedAt: string;
+    endedAt: string;
+    note?: string;
+    visibility: WorkVisibility;
+  },
+) {
+  return requestJson<{ labourEntry: StaffLabourEntry }>(
+    `/api/job-cards/${jobCardId}/labour`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(entry),
+      errorMessage: 'Failed to log labour.',
+    },
+  );
+}
+
+export async function addJobNote(
+  jobCardId: string,
+  note: { body: string; visibility: WorkVisibility },
+) {
+  return requestJson<{ note: StaffJobNote }>(
+    `/api/job-cards/${jobCardId}/notes`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(note),
+      errorMessage: 'Failed to add note.',
     },
   );
 }

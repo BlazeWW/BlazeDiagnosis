@@ -2,7 +2,6 @@ import { and, desc, eq, inArray } from 'drizzle-orm';
 
 import { db } from '@/db/client';
 import {
-  customers,
   intakeInspections,
   jobCards,
   jobNotes,
@@ -16,7 +15,7 @@ import {
   requireTenantPermission,
   TenantAccessError,
 } from '@/lib/authorization/guards';
-import type { SystemRole } from '@/lib/constants/roles';
+import { findSessionCustomerId, isStaffRole } from '@/server/sessionAudience';
 
 import type {
   VehicleHistoryAudience,
@@ -26,37 +25,10 @@ import type {
 
 const HISTORY_LIMIT = 50;
 
-// Only these roles see internal history. Every other role must prove it owns the vehicle.
-const STAFF_ROLES: readonly SystemRole[] = [
-  'site_manager',
-  'floor_manager',
-  'mechanic',
-  'platform_admin',
-];
-
-const uuidPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 type VehicleRow = typeof vehicles.$inferSelect;
 
 function toIso(value: Date | null | undefined) {
   return value ? value.toISOString() : null;
-}
-
-// The customer is found from the signed-in user (customers.user_id), never from a client-supplied id.
-async function findSessionCustomerId(tenantId: string, userId: string) {
-  // customers.user_id is a UUID; identities that are not UUIDs (e.g. Auth0 ids) cannot be linked.
-  if (!uuidPattern.test(userId)) {
-    return null;
-  }
-
-  const [customer] = await db
-    .select({ id: customers.id })
-    .from(customers)
-    .where(and(eq(customers.tenantId, tenantId), eq(customers.userId, userId)))
-    .limit(1);
-
-  return customer?.id ?? null;
 }
 
 async function customerOwnsVehicle(
@@ -88,10 +60,9 @@ export async function getVehicleServiceHistory(
   vehicleId: string,
 ): Promise<VehicleServiceHistory> {
   const user = await requireTenantPermission(tenantId, 'vehicles.read');
-  const audience: VehicleHistoryAudience =
-    user.tenantRole && STAFF_ROLES.includes(user.tenantRole)
-      ? 'staff'
-      : 'customer';
+  const audience: VehicleHistoryAudience = isStaffRole(user.tenantRole)
+    ? 'staff'
+    : 'customer';
 
   const [vehicle] = await db
     .select()

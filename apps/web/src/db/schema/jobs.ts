@@ -158,3 +158,40 @@ export const jobNotes = pgTable('job_notes', {
     .defaultNow()
     .notNull(),
 });
+
+// BD-020: time a technician spent on a job card. Corrections update the row in place;
+// each change (with its reason) is recorded in audit_logs as the correction history.
+export const jobLabourEntries = pgTable(
+  'job_labour_entries',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    jobCardId: uuid('job_card_id')
+      .references(() => jobCards.id, { onDelete: 'cascade' })
+      .notNull(),
+    technicianId: uuid('technician_id')
+      .references(() => users.id)
+      .notNull(),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+    endedAt: timestamp('ended_at', { withTimezone: true }).notNull(),
+    minutes: integer('minutes').notNull(),
+    note: text('note'),
+    visibility: visibilityEnum('visibility').notNull().default('internal'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index('job_labour_entries_job_idx').on(table.tenantId, table.jobCardId),
+    index('job_labour_entries_technician_idx').on(
+      table.tenantId,
+      table.technicianId,
+      table.startedAt,
+    ),
+  ],
+);

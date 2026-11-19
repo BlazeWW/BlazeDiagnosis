@@ -30,7 +30,6 @@ import {
   requireSearchParam,
 } from '@/lib/api/response';
 import { requireTenantContext } from '@/lib/tenancy/tenantContext';
-import { TenantAccessError } from '@/lib/authorization/guards';
 
 function normalizeAvailability(
   value: string,

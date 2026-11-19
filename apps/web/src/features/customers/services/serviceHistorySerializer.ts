@@ -55,6 +55,7 @@ export type ServiceHistoryRelatedRows = {
 
 export const customerStatusLabels: Record<CustomerJobStatus, string> = {
   awaiting_approval: 'Awaiting your approval',
+  cancelled: 'Cancelled',
   completed: 'Completed',
   final_checks: 'Final checks',
   inspection_in_progress: 'Inspection in progress',

@@ -6,6 +6,7 @@ import { AppShell } from '@/components/common/appShell';
 import { FeatureChecklist } from '@/components/common/featureDashboard';
 import { Button } from '@/components/ui/button';
 import { JobCardOverview } from '@/features/job-cards/components/jobCardOverview';
+import { JobWorkPanel } from '@/features/job-cards/components/jobWorkPanel';
 import { StaffingPanel } from '@/features/job-cards/components/staffingPanel';
 import type { FeatureChecklistItem } from '@/types/featureDashboard';
 
@@ -40,6 +41,8 @@ export default function StationJobCardsPage() {
       />
 
       <StaffingPanel />
+
+      <JobWorkPanel />
     </AppShell>
   );
 }
