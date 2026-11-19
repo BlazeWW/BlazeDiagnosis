@@ -1,6 +1,7 @@
 // apps/web/src/features/quotes/services/quote.service.ts
 import { sql } from 'drizzle-orm';
 import { db } from '@/db/client';
+import { calculateDocumentTotals, calculateLineCents, centsToString, DEFAULT_VAT_RATE } from '@/lib/money/cents';
 import { requireTenantPermission } from '@/lib/auth/auth-guards';
 
 // Helper function to safely get the first row from a query result
@@ -186,7 +187,9 @@ export async function addQuoteLineItem(
     }
   }
 
-  const total = input.quantity * input.unitPrice;
+  // Line total = after discount, excluding VAT (BD-025). VAT is added at quote level.
+  const line = calculateLineCents({ quantity: input.quantity, unitPrice: input.unitPrice });
+  const total = centsToString(line.subtotal - line.discount);
 
   const result = await db.execute(sql`
     INSERT INTO quote_line_items (
@@ -202,7 +205,7 @@ export async function addQuoteLineItem(
       ${input.quantity},
       ${input.unitPrice},
       ${total},
-      '0',
+      ${DEFAULT_VAT_RATE},
       '0',
       'pending'
     ) RETURNING *
@@ -259,24 +262,36 @@ export async function recalculateQuoteTotals(
   quoteId: string,
 ) {
   const itemsResult = await db.execute(sql`
-    SELECT total FROM quote_line_items 
-    WHERE tenant_id = ${tenantId}::uuid 
+    SELECT quantity, unit_price, discount, tax_rate FROM quote_line_items
+    WHERE tenant_id = ${tenantId}::uuid
     AND quote_id = ${quoteId}::uuid
   `);
 
-  const items = getRows(itemsResult) as { total: string }[];
-  
-  const subtotal = items.reduce((sum: number, item: { total: string }) => sum + Number(item.total), 0);
-  const tax = subtotal * 0.15;
-  const total = subtotal + tax;
+  const items = getRows(itemsResult) as Array<{
+    discount: string | null;
+    quantity: string;
+    tax_rate: string | null;
+    unit_price: string;
+  }>;
+
+  // All maths in whole cents (BD-025): per-line discount and VAT, rounded half up.
+  const totals = calculateDocumentTotals(
+    items.map((item) => ({
+      discount: item.discount,
+      quantity: item.quantity,
+      taxRate: item.tax_rate,
+      unitPrice: item.unit_price,
+    })),
+  );
 
   await db.execute(sql`
-    UPDATE quotes 
-    SET 
-      subtotal = ${subtotal.toString()},
-      tax_total = ${tax.toString()},
-      total = ${total.toString()}
-    WHERE tenant_id = ${tenantId}::uuid 
+    UPDATE quotes
+    SET
+      subtotal = ${centsToString(totals.subtotal)},
+      discount_total = ${centsToString(totals.discountTotal)},
+      tax_total = ${centsToString(totals.taxTotal)},
+      total = ${centsToString(totals.total)}
+    WHERE tenant_id = ${tenantId}::uuid
     AND id = ${quoteId}::uuid
   `);
 }

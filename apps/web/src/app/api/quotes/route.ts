@@ -7,6 +7,7 @@ import {
 } from '@/features/quotes';
 import { apiCreated, apiOk, handleApiError } from '@/lib/api/response';
 import { requireTenantContext } from '@/lib/tenancy/tenantContext';
+import { TenantAccessError } from '@/lib/authorization/guards';
 
 const routeName = '/api/quotes';
 
@@ -39,7 +40,13 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const tenant = await requireTenantContext();
-    const input = createQuoteSchema.parse(await request.json());
+    const rawBody = await request.json();
+
+    if (rawBody.tenantId && rawBody.tenantId !== tenant.tenantId) {
+      throw new TenantAccessError('Submitted tenant ID conflicts with authenticated session tenant.');
+    }
+    
+    const input = createQuoteSchema.parse(rawBody);
     const quote = await createQuoteFromJobCard(
       tenant.tenantId,
       input.jobCardId,
