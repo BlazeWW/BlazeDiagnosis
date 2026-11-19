@@ -1,8 +1,10 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, lte, sql } from "drizzle-orm";
 
 import { emailDeliveries, emailDeliveryAttempts } from "@/db/schema";
 
 import type { EmailFailureCode, EmailNotificationEventType } from "../types/email.types";
+
+import { canRetryEmail, getNextEmailRetryAt } from "../services/email-retry-policy";
 
 type EmailDeliveryRecord = typeof emailDeliveries.$inferSelect;
 
@@ -25,6 +27,8 @@ interface FinishDeliveryInput {
   success: boolean;
   providerReference?: string;
   failureCode?: EmailFailureCode;
+  retryable?: boolean;
+  nextAttemptAt?: Date;
 }
 
 export interface EmailDeliveryRepository {
@@ -35,6 +39,10 @@ export interface EmailDeliveryRepository {
   claim(input: ClaimDeliveryInput): Promise<EmailDeliveryRecord | null>;
 
   finish(input: FinishDeliveryInput): Promise<void>;
+
+  claimDueRetries(limit?: number, now?: Date): Promise<EmailDeliveryRecord[]>;
+
+  recoverStaleDeliveries(staleBefore: Date, now?: Date, limit?: number): Promise<number>;
 }
 
 /**
@@ -65,7 +73,6 @@ export const emailDeliveryRepository: EmailDeliveryRepository = {
       return { delivery: inserted, created: true };
     }
 
-    // A matching delivery already exists for this tenant and key.
     const [existing] = await db
       .select()
       .from(emailDeliveries)
@@ -81,7 +88,6 @@ export const emailDeliveryRepository: EmailDeliveryRepository = {
       throw new Error("Email delivery could not be retrieved after conflict.");
     }
 
-    // Prevent an idempotency key from being reused for a different event.
     if (existing.invoiceId !== input.invoiceId || existing.eventType !== input.eventType) {
       throw new Error("Email delivery idempotency key conflict.");
     }
@@ -92,7 +98,6 @@ export const emailDeliveryRepository: EmailDeliveryRepository = {
   async claim(input) {
     const { db } = await import("@/db/client");
 
-    // Only one request can move a queued delivery into sending.
     const [claimed] = await db
       .update(emailDeliveries)
       .set({
@@ -115,15 +120,21 @@ export const emailDeliveryRepository: EmailDeliveryRepository = {
   async finish(input) {
     const { db } = await import("@/db/client");
 
+    const nextStatus = input.success
+      ? "sent"
+      : input.retryable && input.nextAttemptAt
+        ? "retrying"
+        : "failed";
+
     await db.transaction(async (tx) => {
       const [updated] = await tx
         .update(emailDeliveries)
         .set({
-          status: input.success ? "sent" : "failed",
+          status: nextStatus,
           providerReference: input.providerReference ?? null,
           failureCode: input.success ? null : (input.failureCode ?? "UNKNOWN_ERROR"),
           sentAt: input.success ? new Date() : null,
-          nextAttemptAt: null,
+          nextAttemptAt: nextStatus === "retrying" ? input.nextAttemptAt! : null,
           updatedAt: new Date(),
         })
         .where(
@@ -148,6 +159,129 @@ export const emailDeliveryRepository: EmailDeliveryRepository = {
         providerReference: input.providerReference ?? null,
         failureCode: input.success ? null : (input.failureCode ?? "UNKNOWN_ERROR"),
       });
+    });
+  },
+
+  /**
+   * Atomically claims retrying deliveries whose scheduled time has arrived.
+   *
+   * SKIP LOCKED allows multiple workers to process separate deliveries
+   * without claiming the same delivery.
+   */
+  async claimDueRetries(limit = 25, now = new Date()) {
+    if (!Number.isInteger(limit) || limit < 1) {
+      throw new Error("Retry claim limit must be a positive integer.");
+    }
+
+    const { db } = await import("@/db/client");
+
+    return db.transaction(async (tx) => {
+      const dueDeliveries = await tx
+        .select()
+        .from(emailDeliveries)
+        .where(and(eq(emailDeliveries.status, "retrying"), lte(emailDeliveries.nextAttemptAt, now)))
+        .orderBy(asc(emailDeliveries.nextAttemptAt))
+        .limit(limit)
+        .for("update", { skipLocked: true });
+
+      const claimedDeliveries: EmailDeliveryRecord[] = [];
+
+      for (const delivery of dueDeliveries) {
+        const [claimed] = await tx
+          .update(emailDeliveries)
+          .set({
+            status: "sending",
+            attemptCount: sql`${emailDeliveries.attemptCount} + 1`,
+            nextAttemptAt: null,
+            updatedAt: now,
+          })
+          .where(
+            and(
+              eq(emailDeliveries.id, delivery.id),
+              eq(emailDeliveries.tenantId, delivery.tenantId),
+              eq(emailDeliveries.status, "retrying"),
+            ),
+          )
+          .returning();
+
+        if (claimed) {
+          claimedDeliveries.push(claimed);
+        }
+      }
+
+      return claimedDeliveries;
+    });
+  },
+
+  /**
+   * Recovers deliveries left in "sending" after a worker interruption.
+   *
+   * The previous attempt is recorded as UNKNOWN_ERROR because the
+   * provider outcome cannot be determined after a process crash.
+   */
+  async recoverStaleDeliveries(staleBefore, now = new Date(), limit = 25) {
+    if (!Number.isInteger(limit) || limit < 1) {
+      throw new Error("Recovery limit must be a positive integer.");
+    }
+
+    const { db } = await import("@/db/client");
+
+    return db.transaction(async (tx) => {
+      const staleDeliveries = await tx
+        .select()
+        .from(emailDeliveries)
+        .where(
+          and(eq(emailDeliveries.status, "sending"), lte(emailDeliveries.updatedAt, staleBefore)),
+        )
+        .limit(limit)
+        .for("update", { skipLocked: true });
+
+      let recoveredCount = 0;
+
+      for (const delivery of staleDeliveries) {
+        const retryAllowed = canRetryEmail(true, delivery.attemptCount);
+
+        const failureCode: EmailFailureCode = retryAllowed
+          ? "UNKNOWN_ERROR"
+          : "MAX_RETRIES_EXCEEDED";
+
+        const nextAttemptAt = retryAllowed ? getNextEmailRetryAt(delivery.attemptCount, now) : null;
+
+        const [updated] = await tx
+          .update(emailDeliveries)
+          .set({
+            status: retryAllowed ? "retrying" : "failed",
+            failureCode,
+            nextAttemptAt,
+            updatedAt: now,
+          })
+          .where(
+            and(
+              eq(emailDeliveries.id, delivery.id),
+              eq(emailDeliveries.tenantId, delivery.tenantId),
+              eq(emailDeliveries.status, "sending"),
+              eq(emailDeliveries.attemptCount, delivery.attemptCount),
+              lte(emailDeliveries.updatedAt, staleBefore),
+            ),
+          )
+          .returning({ id: emailDeliveries.id });
+
+        if (!updated) {
+          continue;
+        }
+
+        await tx.insert(emailDeliveryAttempts).values({
+          deliveryId: delivery.id,
+          tenantId: delivery.tenantId,
+          attemptNumber: delivery.attemptCount,
+          status: "failed",
+          failureCode,
+        });
+
+        recoveredCount += 1;
+      }
+
+      return recoveredCount;
     });
   },
 };

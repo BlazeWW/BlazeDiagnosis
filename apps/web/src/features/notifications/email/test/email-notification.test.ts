@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { MockEmailProviderAdapter } from "../adapters/mock-email.adapter";
+import type { EmailProvider } from "../adapters/email-provider.interface";
 import type { EmailDeliveryRepository } from "../repositories/email-delivery.repository";
 
 import {
+  processDueEmailRetries,
   sendInvoiceEmail,
   type EmailNotificationDependencies,
 } from "../services/email-notification.service";
@@ -11,9 +13,7 @@ import {
 import { INVOICE_A, INVOICE_B, TENANT_A } from "./fixtures";
 
 describe("Email Notification Service", () => {
-  function createDependencies(invoice = INVOICE_A) {
-    const provider = new MockEmailProviderAdapter();
-
+  function createDependencies(invoice = INVOICE_A, provider = new MockEmailProviderAdapter()) {
     const authorizeTenant = vi.fn().mockResolvedValue(undefined);
     const loadInvoice = vi.fn().mockResolvedValue(invoice);
 
@@ -36,6 +36,10 @@ describe("Email Notification Service", () => {
       }),
 
       finish: vi.fn().mockResolvedValue(undefined),
+
+      recoverStaleDeliveries: vi.fn().mockResolvedValue(0),
+
+      claimDueRetries: vi.fn().mockResolvedValue([]),
     } as unknown as EmailDeliveryRepository;
 
     const dependencies: EmailNotificationDependencies = {
@@ -53,6 +57,15 @@ describe("Email Notification Service", () => {
       repository,
     };
   }
+
+  const dueDelivery = {
+    id: "delivery-retry-001",
+    tenantId: TENANT_A,
+    invoiceId: INVOICE_A.id,
+    eventType: "invoice_issued" as const,
+    idempotencyKey: `${TENANT_A}:${INVOICE_A.id}:invoice_issued`,
+    attemptCount: 2,
+  };
 
   it("sends an invoice issued email successfully", async () => {
     const { dependencies, provider } = createDependencies();
@@ -245,33 +258,7 @@ describe("Email Notification Service", () => {
       },
     ]);
 
-    const repository = {
-      createOrGet: vi.fn().mockResolvedValue({
-        created: true,
-        delivery: {
-          id: "delivery-001",
-          status: "queued",
-          attemptCount: 0,
-          providerReference: null,
-          failureCode: null,
-        },
-      }),
-
-      claim: vi.fn().mockResolvedValue({
-        id: "delivery-001",
-        status: "sending",
-        attemptCount: 1,
-      }),
-
-      finish: vi.fn().mockResolvedValue(undefined),
-    } as unknown as EmailDeliveryRepository;
-
-    const dependencies: EmailNotificationDependencies = {
-      authorizeTenant: vi.fn().mockResolvedValue(undefined),
-      loadInvoice: vi.fn().mockResolvedValue(INVOICE_A),
-      provider,
-      repository,
-    };
+    const { dependencies, repository } = createDependencies(INVOICE_A, provider);
 
     const result = await sendInvoiceEmail(
       {
@@ -347,5 +334,187 @@ describe("Email Notification Service", () => {
     expect(result.providerReference).toBe("mock-1");
     expect(provider.sentEmails).toHaveLength(0);
     expect(repository.claim).not.toHaveBeenCalled();
+  });
+
+  // Retry worker tests
+
+  it("processes a due retry successfully", async () => {
+    const { dependencies, provider, repository } = createDependencies();
+
+    const now = new Date("2026-11-19T12:00:00.000Z");
+
+    vi.mocked(repository.claimDueRetries).mockResolvedValue([dueDelivery] as never);
+
+    vi.mocked(repository.recoverStaleDeliveries).mockResolvedValue(2);
+
+    const result = await processDueEmailRetries({ limit: 10, now }, dependencies);
+
+    expect(result).toEqual({
+      recovered: 2,
+      claimed: 1,
+      sent: 1,
+      retrying: 0,
+      failed: 0,
+    });
+
+    expect(repository.recoverStaleDeliveries).toHaveBeenCalledWith(
+      new Date(now.getTime() - 10 * 60 * 1000),
+      now,
+      10,
+    );
+
+    expect(repository.claimDueRetries).toHaveBeenCalledWith(10, now);
+
+    expect(provider.sentEmails).toHaveLength(1);
+
+    expect(provider.sentEmails[0].idempotencyKey).toBe(dueDelivery.idempotencyKey);
+
+    expect(repository.finish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: TENANT_A,
+        deliveryId: dueDelivery.id,
+        attemptNumber: 2,
+        success: true,
+      }),
+    );
+  });
+
+  it("schedules another retry after a temporary provider failure", async () => {
+    const provider = new MockEmailProviderAdapter([
+      {
+        success: false,
+        failureCode: "PROVIDER_TEMPORARY_FAILURE",
+        retryable: true,
+      },
+    ]);
+
+    const { dependencies, repository } = createDependencies(INVOICE_A, provider);
+
+    const now = new Date("2026-11-19T12:00:00.000Z");
+
+    vi.mocked(repository.claimDueRetries).mockResolvedValue([dueDelivery] as never);
+
+    const result = await processDueEmailRetries({ now }, dependencies);
+
+    expect(result.retrying).toBe(1);
+    expect(result.failed).toBe(0);
+
+    expect(repository.finish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: TENANT_A,
+        deliveryId: dueDelivery.id,
+        attemptNumber: 2,
+        success: false,
+        failureCode: "PROVIDER_TEMPORARY_FAILURE",
+        retryable: true,
+        nextAttemptAt: new Date(now.getTime() + 2 * 60 * 1000),
+      }),
+    );
+  });
+
+  it("marks a permanent provider failure as failed", async () => {
+    const provider = new MockEmailProviderAdapter([
+      {
+        success: false,
+        failureCode: "PROVIDER_PERMANENT_FAILURE",
+        retryable: false,
+      },
+    ]);
+
+    const { dependencies, repository } = createDependencies(INVOICE_A, provider);
+
+    vi.mocked(repository.claimDueRetries).mockResolvedValue([dueDelivery] as never);
+
+    const result = await processDueEmailRetries({}, dependencies);
+
+    expect(result.failed).toBe(1);
+    expect(result.retrying).toBe(0);
+
+    expect(repository.finish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        failureCode: "PROVIDER_PERMANENT_FAILURE",
+        retryable: false,
+        nextAttemptAt: undefined,
+      }),
+    );
+  });
+
+  it("records a provider exception only once", async () => {
+    const { dependencies, repository } = createDependencies();
+
+    const throwingProvider = {
+      send: vi.fn().mockRejectedValue(new Error("Provider connection failed")),
+    };
+
+    dependencies.provider = throwingProvider as unknown as EmailProvider;
+
+    vi.mocked(repository.claimDueRetries).mockResolvedValue([dueDelivery] as never);
+
+    const result = await processDueEmailRetries({}, dependencies);
+
+    expect(result.retrying).toBe(1);
+    expect(result.failed).toBe(0);
+
+    expect(repository.finish).toHaveBeenCalledOnce();
+
+    expect(repository.finish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: TENANT_A,
+        deliveryId: dueDelivery.id,
+        attemptNumber: 2,
+        success: false,
+        failureCode: "UNKNOWN_ERROR",
+        retryable: true,
+      }),
+    );
+  });
+
+  it("does not retry an invoice preparation failure", async () => {
+    const { dependencies, provider, loadInvoice, repository } = createDependencies();
+
+    vi.mocked(loadInvoice).mockResolvedValue(null);
+
+    vi.mocked(repository.claimDueRetries).mockResolvedValue([dueDelivery] as never);
+
+    const result = await processDueEmailRetries({}, dependencies);
+
+    expect(result.failed).toBe(1);
+    expect(result.retrying).toBe(0);
+
+    expect(provider.sentEmails).toHaveLength(0);
+
+    expect(repository.finish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        failureCode: "TEMPLATE_VALIDATION_FAILED",
+        retryable: false,
+        nextAttemptAt: undefined,
+      }),
+    );
+  });
+
+  it("retries an unexpected invoice preparation error", async () => {
+    const { dependencies, loadInvoice, repository } = createDependencies();
+
+    const now = new Date("2026-11-19T12:00:00.000Z");
+
+    vi.mocked(loadInvoice).mockRejectedValue(new Error("Temporary database connection failure"));
+
+    vi.mocked(repository.claimDueRetries).mockResolvedValue([dueDelivery] as never);
+
+    const result = await processDueEmailRetries({ now }, dependencies);
+
+    expect(result.retrying).toBe(1);
+    expect(result.failed).toBe(0);
+
+    expect(repository.finish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        failureCode: "UNKNOWN_ERROR",
+        retryable: true,
+        nextAttemptAt: new Date(now.getTime() + 2 * 60 * 1000),
+      }),
+    );
   });
 });
