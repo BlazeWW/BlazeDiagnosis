@@ -36,6 +36,33 @@ Failure:
 - [ ] Avoid leaking internal stack traces.
 - [ ] Add request IDs to logs.
 
+## Tenant feature flags (BD-046)
+
+### Read contract
+`isFeatureEnabled(tenantId, flagKey)`:
+- Returns `boolean`.
+- **Safe default:** missing flag returns `false`.
+- Disabled flag returns `false`.
+- Tenant-scoped: only returns flags for the caller's tenant.
+
+### Write contract
+`setTenantFeatureFlag(tenantId, flagKey, enabled, actorUserId)`:
+- **Requires permission:** `platform.tenants.manage`.
+- Reads previous value before writing.
+- Upserts on `(tenantId, flagKey)`.
+- **Audit:** writes via `writeAuditLog` with `previousValue` and `newValue`, actor, timestamp, and tenant scope.
+- **Safe default:** any flag not explicitly enabled is `false`.
+
+### Flag inventory & defaults
+| Flag | Default | Type |
+|---|---|---|
+| (none currently registered in code) | `false` | Release flag |
+
+New feature flags must default to `false` until explicitly enabled per tenant by a platform admin.
+
+### Out of scope
+The UI page `apps/web/src/app/[locale]/(platform)/platform/feature-flags/page.tsx` is mock-backed. Wiring it to `isFeatureEnabled` / `setTenantFeatureFlag` is a follow-up UI task.
+
 ## Cross-tenant test coverage (BD-058)
 
 | Endpoint | Cross-tenant GET | Cross-tenant PATCH | Cross-tenant DELETE | Positive control |

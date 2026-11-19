@@ -12,6 +12,8 @@ import {
   requireTenantPermission,
 } from '@/lib/authorization/guards';
 
+import { writeAuditLog } from '@/features/audit/services/auditService';
+
 export async function createTenant(input: {
   name: string;
   slug: string;
@@ -151,4 +153,48 @@ export async function updateTenantBrandingConfig(
   });
 
   return { branding, documentSettings };
+}
+
+export async function setTenantFeatureFlag(
+  tenantId: string,
+  flagKey: string,
+  enabled: boolean,
+  actorUserId: string,
+) {
+  await requireTenantPermission(tenantId, 'platform.tenants.manage');
+
+  // Read previous value for audit
+  const [existing] = await db
+    .select()
+    .from(tenantFeatureFlags)
+    .where(
+      and(
+        eq(tenantFeatureFlags.tenantId, tenantId),
+        eq(tenantFeatureFlags.flagKey, flagKey),
+      ),
+    )
+    .limit(1);
+
+  const previousValue = existing ? { enabled: existing.enabled } : null;
+
+  const [flag] = await db
+    .insert(tenantFeatureFlags)
+    .values({ tenantId, flagKey, enabled })
+    .onConflictDoUpdate({
+      target: [tenantFeatureFlags.tenantId, tenantFeatureFlags.flagKey],
+      set: { enabled, updatedAt: new Date() },
+    })
+    .returning();
+
+  await writeAuditLog({
+    tenantId,
+    actorUserId,
+    action: 'UPDATE',
+    entityType: 'tenant_feature_flag',
+    entityId: flag.id,
+    previousValue,
+    newValue: { flagKey, enabled: flag.enabled },
+  });
+
+  return flag;
 }
