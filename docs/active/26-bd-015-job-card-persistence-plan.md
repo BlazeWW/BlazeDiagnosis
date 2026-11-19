@@ -3,8 +3,8 @@
 **Priority:** P0  
 **Year:** Y2  
 **Owner:** One intern  
-**Status:** Stages 3–4 implemented; demonstration and quality gates remain
-**Issue:** BD-015 (link the reviewed PR to the GitHub issue ID when the issue is available)
+**Status:** Mock-backed behavior and documentation verified; repository-wide quality gates fail and independent PR review remains pending
+**Issue:** [BD-015 #107](https://github.com/BlazeWW/BlazeDiagnosis/issues/107)
 
 ## Objective
 
@@ -98,9 +98,9 @@ The authorized service and tenant-scoped API routes now use this adapter.
 2. Require `jobs.create` for creation and `jobs.read` for list/detail operations.
 3. Resolve tenant context on the server for every request; reject client-supplied tenant IDs through the strict contract.
 4. Implement:
-   - `POST /api/job-cards` — create and return the standardized `201` envelope.
-   - `GET /api/job-cards` — return the tenant’s list and count metadata.
-   - `GET /api/job-cards/[id]` — return a tenant-scoped record or `404` for missing/foreign IDs.
+   - `POST /api/service-requests` — create and return the standardized `201` envelope.
+   - `GET /api/service-requests` — return the tenant’s list and count metadata.
+   - `GET /api/service-requests/[id]` — return a tenant-scoped record or `404` for missing/foreign IDs.
 5. Map validation, forbidden, relationship, and not-found failures to explicit standard API responses.
 
 **Exit check:** Route tests verify tenant context and permission-protected service calls, response envelopes, invalid input rejection, and foreign-tenant non-disclosure.
@@ -161,3 +161,25 @@ The job-card page’s data binding, job status transitions, staff assignment, cu
 - Exact lint, typecheck, full test, and build command results.
 - Brief demonstration evidence showing creation followed by retrieval and a foreign-tenant rejection.
 - Any schema/migration decision and the reason a migration was or was not required.
+
+## Verification record — 2026-11-12
+
+- Focused job-card verification:
+  `pnpm --filter @blaze-diagnostics/web exec vitest run src/app/api/service-requests/route.test.ts src/app/api/service-requests/[id]/route.test.ts src/features/job-cards/services/jobCardService.test.ts src/features/job-cards/repositories/mockServiceRequestRepository.test.ts src/features/job-cards/repositories/databaseServiceRequestRepository.test.ts src/features/job-cards/schemas/jobCardSchema.test.ts`
+  — passed (6 files, 30 tests). The API contract test uses the local fixture
+  adapter; this is not a live database demonstration.
+- `pnpm lint` — failed: 9 existing errors in PartsCatalog, SuppliersPanel,
+  invoiceService, and partsService; the changed job-card files had no lint
+  errors.
+- `pnpm typecheck` — failed: existing casing conflict between `vehicleForm.tsx`
+  and `VehicleForm.tsx`, plus invalid quote permission values.
+- `pnpm test` — failed: 12 suites cannot load without `AUTH0_DOMAIN` and
+  `AUTH0_AUDIENCE`; one existing FormField accessibility assertion also fails.
+  The job-card tests pass within the full run.
+- `pnpm build` — failed: unresolved case-sensitive `./vehicleForm` import in
+  `src/components/vehicles/index.ts`; Next.js also reported an external
+  `C:\Users\phuti\package-lock.json` workspace-root warning.
+- No disposable-database or test-container setup was found. The transaction
+  failure test verifies the database repository rejects when the status-event
+  insert fails inside its transaction callback; an actual database rollback
+  was not demonstrated.

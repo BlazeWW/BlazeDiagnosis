@@ -99,4 +99,20 @@ describe('jobCardService service-request operations', () => {
     );
     expect(repositoryMock.create).not.toHaveBeenCalled();
   });
+
+  it('does not list or retrieve records when read permission is denied', async () => {
+    authGuardMock.requireTenantPermission.mockRejectedValue(
+      new Error('Permission denied.'),
+    );
+
+    await expect(listServiceRequests(tenantId)).rejects.toThrow(
+      'Permission denied.',
+    );
+    await expect(getServiceRequestById(tenantId, 'request-1')).rejects.toThrow(
+      'Permission denied.',
+    );
+
+    expect(repositoryMock.list).not.toHaveBeenCalled();
+    expect(repositoryMock.getById).not.toHaveBeenCalled();
+  });
 });

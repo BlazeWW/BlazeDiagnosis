@@ -153,6 +153,7 @@ describe('DatabaseServiceRequestRepository', () => {
       }),
     ).rejects.toThrow('event insert failed');
     expect(dbMock.transaction).toHaveBeenCalledOnce();
+    expect(tx.insert).toHaveBeenCalledTimes(3);
   });
 
   it('maps tenant-scoped list and detail results to the DTO', async () => {
