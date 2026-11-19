@@ -20,7 +20,7 @@ Track which pages are present, which are demo-safe only, and what must happen be
 |---|---|---|
 | `/[locale]/customer` | Present | Connect to authenticated customer dashboard service. |
 | `/[locale]/customer/vehicles` | Present, demo data | Load customer vehicles by authenticated customer. |
-| `/[locale]/customer/services` | Present, demo data | Load active and historical service jobs. |
+| `/[locale]/customer/services` | Present, needs auth (BD-037) | Service history loads from the database through `serviceHistoryService` and `GET /api/customer/service-history`, scoped to the session tenant and the customer linked to the signed-in user (`customers.user_id`). Needs production Auth0 sign-in for customers and a way for staff to link a customer profile to a user. |
 | `/[locale]/customer/quotes` | Present, demo data | Load active quotes and approval status. |
 | `/[locale]/customer/invoices` | Present | Confirm API/data consistency and tenant/customer authorization. |
 | `/[locale]/customer/invoices/[id]` | Present | Confirm invoice ownership guard and PDF/download flow. |
@@ -36,7 +36,7 @@ Track which pages are present, which are demo-safe only, and what must happen be
 | `/[locale]/station/customers/[id]` | Present after build fix | Connect detail components to production customer service and guard access. |
 | `/[locale]/station/vehicles` | Present | Confirm vehicle search and filter UX. |
 | `/[locale]/station/vehicles/[id]` | Present after build fix | Connect detail components to production vehicle service and guard access. |
-| `/[locale]/station/job-cards` | Present, demo data | Implement job card persistence, status changes, assignment, and timeline. |
+| `/[locale]/station/job-cards` | Present; staff assignment live via API (BD-014) | Implement job card status changes and timeline; confirm remaining demo data. |
 | `/[locale]/station/quotes` | Present | Standardize quote list and connect to database. |
 | `/[locale]/station/quotes/new` | Present | Persist quote builder, revisions, and customer send flow. |
 | `/[locale]/station/invoices` | Present, layout refined | Connect metrics/register to invoice services and payment state. |
