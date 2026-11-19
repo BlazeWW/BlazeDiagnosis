@@ -12,7 +12,8 @@ export type CustomerJobStatus =
   | 'final_checks'
   | 'invoice_ready'
   | 'ready_for_collection'
-  | 'completed';
+  | 'completed'
+  | 'cancelled';
 
 export type CustomerServiceHistoryVehicle = {
   make: string;
