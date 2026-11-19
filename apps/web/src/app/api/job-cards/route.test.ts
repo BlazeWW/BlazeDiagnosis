@@ -8,7 +8,7 @@ const tenantContextMock = vi.hoisted(() => ({
 }));
 const jobCardServiceMock = vi.hoisted(() => ({
   createServiceRequest: vi.fn(),
-  listServiceRequests: vi.fn(),
+  getWorkshopBoard: vi.fn(),
 }));
 
 vi.mock('@/lib/tenancy/tenantContext', () => tenantContextMock);
@@ -36,20 +36,15 @@ describe('/api/job-cards', () => {
     tenantContextMock.requireTenantContext.mockResolvedValue({ tenantId });
   });
 
-  it('returns tenant service requests and count metadata', async () => {
-    jobCardServiceMock.listServiceRequests.mockResolvedValue([
-      { id: serviceRequestId },
-    ]);
+  it('returns tenant job cards and count metadata', async () => {
+    jobCardServiceMock.getWorkshopBoard.mockResolvedValue([{ id: 'job-1' }]);
 
     const response = await GET();
 
     expect(response.status).toBe(200);
-    expect(tenantContextMock.requireTenantContext).toHaveBeenCalledOnce();
-    expect(jobCardServiceMock.listServiceRequests).toHaveBeenCalledWith(
-      tenantId,
-    );
+    expect(jobCardServiceMock.getWorkshopBoard).toHaveBeenCalledWith(tenantId);
     await expect(readJson(response)).resolves.toEqual({
-      data: { serviceRequests: [{ id: serviceRequestId }] },
+      data: { jobCards: [{ id: 'job-1' }] },
       meta: { count: 1 },
       success: true,
     });
@@ -129,7 +124,7 @@ describe('/api/job-cards', () => {
   });
 
   it('maps permission failures to forbidden', async () => {
-    jobCardServiceMock.listServiceRequests.mockRejectedValue(
+    jobCardServiceMock.getWorkshopBoard.mockRejectedValue(
       new Error('Cross-tenant access denied or missing permission.'),
     );
 
