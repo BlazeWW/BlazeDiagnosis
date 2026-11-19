@@ -41,7 +41,7 @@ Track which pages are present, which are demo-safe only, and what must happen be
 | `/[locale]/station/quotes/new` | Present | Persist quote builder, revisions, and customer send flow. |
 | `/[locale]/station/invoices` | Present, layout refined | Connect metrics/register to invoice services and payment state. |
 | `/[locale]/station/invoices/[id]` | Present, layout refined | Connect actions to invoice services and branded document generation. |
-| `/[locale]/station/parts` | Present, demo data; supplier comparison service + `GET /api/supplier-responses` (staff only) | Store currency, payable total, tax treatment and units on supplier responses so real offers can be ranked; wire the page to live data; parts requests and order status. |
+| `/[locale]/station/parts` | Present, demo data; supplier comparison service + `GET /api/supplier-responses` (staff only) | **Needs a DB migration (lead approval):** add currency, payable total, tax treatment and unit columns to supplier responses so real offers can be ranked; wire the page to live data; parts requests and order status. |
 | `/[locale]/station/reports` | Present, demo data | Build report query services and export options. |
 | `/[locale]/station/settings/branding` | Present | Persist branding to database and add logo upload. |
 | `/[locale]/station/showcase` | Demo page | Gate behind development flag or remove before production. |
