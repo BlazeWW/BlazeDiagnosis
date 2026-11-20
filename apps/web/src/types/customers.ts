@@ -1,9 +1,11 @@
 export type Customer = {
-  email?: string;
+  email?: string | null;
   firstName?: string;
   id: string;
   lastName?: string;
-  phone?: string;
+  notes?: string | null;
+  phone?: string | null;
+  preferredLocale?: string | null;
   status?: string;
 };
 
