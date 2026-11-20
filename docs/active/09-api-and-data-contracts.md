@@ -37,6 +37,7 @@ Failure:
 - [ ] Add request IDs to logs.
 - [x] **Reject cross-tenant job card references in parts requests (BD-031).**
 - [x] **Validate parts request item quantities must be > 0 (BD-031).**
+- [x] **Aggregate usage reports must be tenant-scoped and expose no PII (BD-048).**
 
 ## Tenant feature flags (BD-046)
 
@@ -403,7 +404,6 @@ Rules:
 - Customers only receive items marked `customer` on their own job card. No internal notes, internal labour or technician ids (`jobWorkSerializers.ts`). Other non-staff users get 403.
 - The audit actor is stored in `newValue.actor` (Auth0 id + email) until Auth0 ids are linked to `users`.
 
-
 ## Supplier response form (BD-032)
 
 ### Validation contract
@@ -433,3 +433,30 @@ Tests: `apps/web/src/components/forms/supplierResponseForm.test.tsx` (4 tests) �
 - Alternate-part field in the form — follow-up.
 - Decline action — follow-up.
 - State retention after API errors — covered by the component's `error` prop but not exercised end-to-end.
+
+## Usage analytics (BD-048)
+
+### Metric dictionary
+| Metric | Source | Definition |
+|---|---|---|
+| `jobsCreated` | `job_cards` table | `count(*)` where `tenantId` matches and `createdAt >= now - days` |
+| `quotesSent` | `quotes` table | `count(*)` where `tenantId` matches, `createdAt >= now - days`, and `status IN ('sent','approved','locked')` |
+
+**Dropped from initial design:** `activeUsers` — `audit_logs.actorUserId` is mostly empty until Auth0 user linking completes. Will be reintroduced once user identity is reliably populated.
+
+### Contract
+`getTenantUsageMetrics(tenantId, days = 30)`:
+- **Requires permission:** `platform.tenants.manage`.
+- **Tenant-scoped:** filters `tenantId` on `job_cards` and `quotes`.
+- **Date-filtered:** only rows where `createdAt >= now - days`.
+- **Safe empty state:** returns zero-valued metrics when no rows exist.
+- **Input validation:** `days` must be a positive finite number.
+- **No PII exposure:** aggregate counts only — no per-row detail leaves the service.
+
+### Query notes
+- Uses indexed columns (`tenant_id`, `created_at` on `job_cards` and `quotes`).
+- Quote count includes `sent`, `approved`, and `locked` statuses.
+
+### Out of scope
+- `activeUsers` metric — deferred until Auth0 user linking lands.
+- UI wiring (`apps/web/src/app/[locale]/(platform)/platform/usage/page.tsx`) is a follow-up task.
