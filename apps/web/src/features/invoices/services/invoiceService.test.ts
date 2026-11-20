@@ -274,4 +274,3 @@ describe('BD-025: invoice totals', () => {
     );
   });
 });
-

@@ -34,13 +34,6 @@ export function getInvoicePaymentStatus(
   return 'partial';
 }
 
-/**
- * Service: create a new invoice from an approved quote.
- *
- * This service reads approved or billable quote line items, calculates
- * invoice totals, writes the invoice and line items, logs an audit event,
- * and enqueues a notification for the recipient.
- */
 export async function createInvoiceFromApprovedQuote(
   tenantId: string,
   quoteId: string,
