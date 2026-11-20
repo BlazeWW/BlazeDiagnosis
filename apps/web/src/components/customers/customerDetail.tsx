@@ -26,6 +26,9 @@ export function CustomerDetail({ customerId }: CustomerDetailProps) {
     { id: string; title: string; status: string }[]
   >([]);
 
+  // Stores an error if the jobs request fails.
+  const [jobsError, setJobsError] = useState<string | null>(null);
+
   // TODO : POD 3 API for quotes and integrate into customer detail.
 
   useEffect(() => {
@@ -33,6 +36,8 @@ export function CustomerDetail({ customerId }: CustomerDetailProps) {
       try {
         setLoading(true);
         setError(null);
+        setJobs([]);
+        setJobsError(null);
 
         const data = await fetchCustomerById(customerId);
         setCustomer(data);
@@ -45,8 +50,11 @@ export function CustomerDetail({ customerId }: CustomerDetailProps) {
             errorMessage: 'Failed to load jobs.',
           });
           setJobs(jobData.jobs);
-        } catch {
-          // jobs endpoint may not exist yet, ignore
+        } catch (err) {
+          // Keep the customer profile visible, but report the jobs failure.
+          setJobsError(
+            err instanceof Error ? err.message : 'Unable to load jobs.',
+          );
         }
       } catch (err) {
         setError(
@@ -105,11 +113,20 @@ export function CustomerDetail({ customerId }: CustomerDetailProps) {
         <DetailItem label="Phone" value={customer.phone ?? '—'} />
         <DetailItem label="Status" value={customer.status ?? 'Active'} />
       </CardContent>
-      {jobs.length > 0 && (
-        <CardContent className="border-t border-border pt-4">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Jobs ({jobs.length})
-          </p>
+
+      <CardContent className="border-t border-border pt-4">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Jobs
+        </p>
+
+        {jobsError ? (
+          <EmptyState title="Jobs unavailable" description={jobsError} />
+        ) : jobs.length === 0 ? (
+          <EmptyState
+            title="No jobs found"
+            description="There are currently no jobs linked to this customer."
+          />
+        ) : (
           <div className="grid gap-2">
             {jobs.map((job) => (
               <div
@@ -121,8 +138,8 @@ export function CustomerDetail({ customerId }: CustomerDetailProps) {
               </div>
             ))}
           </div>
-        </CardContent>
-      )}
+        )}
+      </CardContent>
     </Card>
   );
 }
