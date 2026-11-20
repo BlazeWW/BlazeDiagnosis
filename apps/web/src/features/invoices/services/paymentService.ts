@@ -1,5 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 
+
 import { db } from '@/db/client';
 import { invoices, payments } from '@/db/schema';
 import { requireTenantPermission } from '@/lib/authorization/guards';
@@ -49,6 +50,9 @@ const [invoice] = await db
       eq(invoices.tenantId, tenantId),
     ),
   );
+if (!invoice) {
+  throw new Error('Invoice not found');
+}
 
 const currentAmountPaid = Number(
   invoice.amountPaid,
@@ -97,6 +101,62 @@ await db
     ),
   );
   return {
+  invoiceId,
+  amountPaid: newAmountPaid,
+  status: newStatus,
+};
+}
+export async function recordPaymentCorrection(
+  tenantId: string,
+  invoiceId: string,
+  amount: number,
+) {
+  if (amount <= 0) {
+    throw new Error(
+      'Correction amount must be greater than zero',
+    );
+  }
+
+  await requireTenantPermission(
+    tenantId,
+    'invoices.create',
+  );
+
+  const [invoice] = await db
+    .select()
+    .from(invoices)
+    .where(
+      and(
+        eq(invoices.id, invoiceId),
+        eq(invoices.tenantId, tenantId),
+      ),
+    );
+
+  if (!invoice) {
+    throw new Error('Invoice not found');
+  }
+const newAmountPaid =
+  Number(invoice.amountPaid) - amount;
+
+const newStatus = getInvoicePaymentStatus(
+  Number(invoice.total),
+  newAmountPaid,
+);
+
+await db
+  .update(invoices)
+  .set({
+    amountPaid: newAmountPaid.toString(),
+    status: newStatus,
+  })
+  .where(
+    and(
+      eq(invoices.id, invoiceId),
+      eq(invoices.tenantId, tenantId),
+    ),
+  );
+
+return {
   invoiceId,
   amountPaid: newAmountPaid,
   status: newStatus,

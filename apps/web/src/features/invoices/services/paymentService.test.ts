@@ -20,6 +20,7 @@ import {
   calculateOutstandingBalance,
   getInvoicePaymentStatus,
   markInvoicePaid,
+  recordPaymentCorrection,
 } from './paymentService';
 
 describe('paymentService', () => {
@@ -69,5 +70,27 @@ it('rejects negative payments', async () => {
     'Payment amount must be greater than zero',
   );
 });
+it('rejects zero correction amounts', async () => {
+  await expect(
+    recordPaymentCorrection(
+      'tenant-1',
+      'invoice-1',
+      0,
+    ),
+  ).rejects.toThrow(
+    'Correction amount must be greater than zero',
+  );
+});
 
+it('rejects negative correction amounts', async () => {
+  await expect(
+    recordPaymentCorrection(
+      'tenant-1',
+      'invoice-1',
+      -100,
+    ),
+  ).rejects.toThrow(
+    'Correction amount must be greater than zero',
+  );
+});
 });

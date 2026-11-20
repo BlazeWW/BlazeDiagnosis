@@ -1,5 +1,3 @@
-export const testValue = 123;
-
 export function calculateOutstandingBalance(
   total: number,
   amountPaid: number,
