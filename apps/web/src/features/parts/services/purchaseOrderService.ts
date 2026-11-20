@@ -170,7 +170,8 @@ export async function createPurchaseOrder(tenantId: string, supplierResponseId: 
 }
 
 export async function listPurchaseOrders(tenantId: string, filter?: { jobCardId?: string },) {
-  await requireActor(tenantId);
+  const actor = await requireActor(tenantId);
+  rejectSupplierOrderRead(actor);
 
   const filters = [eq(partsOrders.tenantId, tenantId)];
 
@@ -186,7 +187,8 @@ export async function listPurchaseOrders(tenantId: string, filter?: { jobCardId?
 }
 
 export async function getPurchaseOrder(tenantId: string, orderId: string) {
-  await requireActor(tenantId);
+  const actor = await requireActor(tenantId);
+  rejectSupplierOrderRead(actor);
 
   const [order] = await db
     .select()
@@ -374,6 +376,19 @@ async function requireActor(tenantId: string): Promise<Actor> {
     role,
     userId: authorized.id,
   };
+}
+
+function rejectSupplierOrderRead(actor: Actor) {
+  if (actor.actor !== 'supplier') {
+    return;
+  }
+
+  // suppliers and users are not linked, so a supplier read cannot be limited
+  // to that supplier's orders. Refuse the read instead of returning the tenant.
+  throw new PurchaseOrderError(
+    'Supplier accounts cannot list or read purchase orders until a user is linked to a supplier.',
+    'FORBIDDEN',
+  );
 }
 
 function roleForTenant(

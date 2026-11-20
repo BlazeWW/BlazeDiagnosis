@@ -292,6 +292,21 @@ describe('purchaseOrderService', () => {
     expect(dbMock.select).not.toHaveBeenCalled();
   });
 
+  it('rejects a supplier list or get before reading orders', async () => {
+    useRole('parts_supplier');
+
+    await expect(listPurchaseOrders('tenant-1')).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    await expect(
+      getPurchaseOrder('tenant-1', 'order-1'),
+    ).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    expect(dbMock.select).not.toHaveBeenCalled();
+    expect(dbMock.transaction).not.toHaveBeenCalled();
+  });
+
   it('does not update an order that belongs to another tenant', async () => {
     harness.selects.push([]);
 

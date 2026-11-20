@@ -71,7 +71,16 @@ Partial fulfillment sends `quantityOrdered` and `quantityReceived`. The received
 - `GET /api/parts-orders` lists orders for the session tenant. Optional `jobCardId`.
 - `GET /api/parts-orders/{id}` returns the order, the linked `partsRequestId`, and the audit history.
 
-Both reads require a station or supplier actor in that tenant.
+Both reads require a station actor (`site_manager` or `floor_manager`) in that tenant. A `parts_supplier` account receives 403, and the service does not query orders.
+
+## Known limit
+
+`users`, `tenant_members`, and `suppliers` do not record which supplier company a `parts_supplier` account belongs to. The service cannot limit that account to its own orders.
+
+Until a user → supplier link exists:
+
+- `listPurchaseOrders` and `getPurchaseOrder` reject supplier accounts. A supplier read would return every order in the tenant, including a competitor's.
+- `changePurchaseOrderStatus` still matches only the session tenant id and the order id. A `parts_supplier` user who knows an order id can change another supplier's order, including marking it delivered.
 
 ## Verification
 
@@ -79,4 +88,4 @@ Both reads require a station or supplier actor in that tenant.
 pnpm --filter @blaze-diagnostics/web exec vitest run src/features/parts/services/purchaseOrderLifecycle.test.ts src/features/parts/services/purchaseOrderService.test.ts src/features/parts/services/request.test.ts src/app/api/parts-orders
 ```
 
-The service tests cover an invalid transition, a duplicate update, partial fulfillment, and a station/supplier action performed by the other role. Each of those leaves the in-memory order status untouched and writes no audit row.
+The service tests cover an invalid transition, a duplicate update, partial fulfillment, and a station/supplier action performed by the other role. Each of those leaves the in-memory order status untouched and writes no audit row. Supplier list and get are rejected before a query.
