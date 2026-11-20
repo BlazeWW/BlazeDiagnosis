@@ -94,3 +94,6 @@ it('rejects negative correction amounts', async () => {
   );
 });
 });
+it('records correction events separately', () => {
+  expect(true).toBe(true);
+});

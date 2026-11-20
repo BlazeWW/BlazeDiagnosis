@@ -135,6 +135,15 @@ export async function recordPaymentCorrection(
   if (!invoice) {
     throw new Error('Invoice not found');
   }
+  await db.insert(payments).values({
+  tenantId,
+  invoiceId,
+  amount: (-amount).toString(),
+  method: 'manual',
+  status: 'completed',
+  paidAt: new Date(),
+});
+
 const newAmountPaid =
   Number(invoice.amountPaid) - amount;
 
