@@ -1,12 +1,14 @@
-import { and, eq } from 'drizzle-orm';
-
+import { and, countDistinct, eq, gte, sql } from 'drizzle-orm';
 import { db } from '@/db/client';
+
 import {
+  auditLogs,
   tenantBranding,
   tenantFeatureFlags,
   tenantSettings,
   tenants,
 } from '@/db/schema';
+
 import {
   requirePermission,
   requireTenantPermission,
@@ -197,4 +199,31 @@ export async function setTenantFeatureFlag(
   });
 
   return flag;
+}
+
+export async function getTenantUsageMetrics(tenantId: string, days = 30) {
+  if (!Number.isFinite(days) || days <= 0) {
+    throw new Error('days must be a positive integer');
+  }
+
+  await requireTenantPermission(tenantId, 'platform.tenants.manage');
+
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+  const [row] = await db
+    .select({
+      activeUsers: countDistinct(auditLogs.actorUserId),
+      jobsCreated: sql<number>`count(*) filter (where ${auditLogs.entityType} = 'job' and ${auditLogs.action} = 'CREATE')`,
+      quotesSent: sql<number>`count(*) filter (where ${auditLogs.entityType} = 'quote' and ${auditLogs.action} = 'SEND')`,
+    })
+    .from(auditLogs)
+    .where(and(eq(auditLogs.tenantId, tenantId), gte(auditLogs.createdAt, since)));
+
+  return {
+    tenantId,
+    days,
+    activeUsers: Number(row?.activeUsers ?? 0),
+    jobsCreated: Number(row?.jobsCreated ?? 0),
+    quotesSent: Number(row?.quotesSent ?? 0),
+  };
 }

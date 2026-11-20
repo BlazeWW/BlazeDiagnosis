@@ -37,6 +37,7 @@ Failure:
 - [ ] Add request IDs to logs.
 - [x] **Reject cross-tenant job card references in parts requests (BD-031).**
 - [x] **Validate parts request item quantities must be > 0 (BD-031).**
+- [x] **Aggregate usage reports must be tenant-scoped and expose no PII (BD-048).**
 
 ## Tenant feature flags (BD-046)
 
@@ -330,3 +331,28 @@ Rules:
 - Corrections update the row in place. `audit_logs` (`job_card.labour_corrected`) keeps the previous values, new values and the reason. This is the correction history.
 - Customers only receive items marked `customer` on their own job card. No internal notes, internal labour or technician ids (`jobWorkSerializers.ts`). Other non-staff users get 403.
 - The audit actor is stored in `newValue.actor` (Auth0 id + email) until Auth0 ids are linked to `users`.
+
+## Usage analytics (BD-048)
+
+### Metric dictionary
+| Metric | Source | Definition |
+|---|---|---|
+| `activeUsers` | `auditLogs` | Distinct `actorUserId` in the period |
+| `jobsCreated` | `auditLogs` | `count(*)` where `entityType = 'job'` AND `action = 'CREATE'` |
+| `quotesSent` | `auditLogs` | `count(*)` where `entityType = 'quote'` AND `action = 'SEND'` |
+
+### Contract
+`getTenantUsageMetrics(tenantId, days = 30)`:
+- **Requires permission:** `platform.tenants.manage`.
+- **Tenant-scoped:** filters `auditLogs.tenantId = tenantId`.
+- **Date-filtered:** only logs where `createdAt >= now - days`.
+- **Safe empty state:** returns zero-valued metrics when no logs exist.
+- **Input validation:** `days` must be a positive finite number.
+- **No PII exposure:** aggregate counts only — no per-user or per-event detail leaves the service.
+
+### Query notes
+- Uses indexed columns (`tenant_id`, `created_at` on `auditLogs`).
+- Postgres `count(*) filter (where ...)` clauses used for `jobsCreated` and `quotesSent`.
+
+### Out of scope
+UI wiring (`apps/web/src/app/[locale]/(platform)/platform/usage/page.tsx`) is a follow-up task.
