@@ -9,16 +9,31 @@ import {
 } from '@/db/schema';
 import { requireTenantPermission } from '@/lib/authorization/guards';
 import { calculateDocumentTotals, centsToString } from '@/lib/money/cents';
-import writeAudit from '@/lib/auditWriter'; 
+import writeAudit from '@/lib/auditWriter';
 import { createInvoiceNotificationRecord } from '@/features/notifications/services/notificationService';
 
-/**
- * Service: create a new invoice from an approved quote.
- *
- * This service reads approved or billable quote line items, calculates
- * invoice totals, writes the invoice and line items, logs an audit event,
- * and enqueues a notification for the recipient.
- */
+export function calculateOutstandingBalance(
+  total: number,
+  amountPaid: number,
+): number {
+  return total - amountPaid;
+}
+
+export function getInvoicePaymentStatus(
+  total: number,
+  amountPaid: number,
+): 'unpaid' | 'partial' | 'paid' {
+  if (amountPaid <= 0) {
+    return 'unpaid';
+  }
+
+  if (amountPaid >= total) {
+    return 'paid';
+  }
+
+  return 'partial';
+}
+
 export async function createInvoiceFromApprovedQuote(
   tenantId: string,
   quoteId: string,
