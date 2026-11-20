@@ -84,7 +84,7 @@
 - [ ] Supplier response with price, availability, ETA, and notes.
 - [ ] Compare supplier responses.
 - [ ] Approve supplier response.
-- [ ] Create parts order.
+- [x] Create parts order. Creation, cancellation, partial fulfillment, and status changes are enforced in the purchase order service. See `docs/active/purchase-order-lifecycle.md`. The supplier orders screen still shows demo records.
 - [ ] Update delivery status.
 - [ ] Show relevant customer delay status.
 - [ ] Add supplier performance metrics.

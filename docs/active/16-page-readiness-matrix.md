@@ -53,7 +53,7 @@ Track which pages are present, which are demo-safe only, and what must happen be
 | `/[locale]/supplier` | Present | Connect dashboard metrics to supplier account context. |
 | `/[locale]/supplier/requests` | Present, demo data | Load supplier-specific parts requests and add response mutation. |
 | `/[locale]/supplier/quotes` | Present, demo data | Persist supplier quotes and response history. |
-| `/[locale]/supplier/orders` | Present, demo data | Implement supplier order status updates. |
+| `/[locale]/supplier/orders` | Present, demo data | Order transitions, role checks, and audit history are available through `/api/parts-orders`. Connect this screen to that API. |
 | `/[locale]/supplier/deliveries` | Present, demo data | Implement ETA, delay, dispatch, and delivery confirmation updates. |
 | `/[locale]/supplier/messages` | Present, demo data | Connect to supplier chat threads. |
 

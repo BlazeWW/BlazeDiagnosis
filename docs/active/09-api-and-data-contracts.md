@@ -91,6 +91,9 @@ Scope note: Quote, invoice, and parts-request `[id]` routes do not yet exist in 
 - [ ] `/api/quotes`
 - [ ] `/api/parts-requests`
 - [ ] `/api/supplier-responses`
+- [ ] `/api/parts-orders`
+- [ ] `/api/parts-orders/[id]`
+- [ ] `/api/parts-orders/[id]/transitions`
 - [ ] `/api/tenant-branding`
 - [ ] `/api/job-cards/[id]/work`
 - [ ] `/api/job-cards/[id]/labour`
@@ -116,6 +119,7 @@ Scope note: Quote, invoice, and parts-request `[id]` routes do not yet exist in 
 - [ ] Invoice DTO.
 - [x] Parts request DTO (Validated in `createPartsRequestDraft`).
 - [ ] Supplier response DTO.
+- [ ] Purchase order DTO. See `docs/active/purchase-order-lifecycle.md`.
 - [ ] Tenant branding DTO.
 - [ ] Audit event DTO.
 

@@ -78,7 +78,7 @@ Use this file to create GitHub issues for the next production development phase.
 - [ ] Persist parts requests.
 - [ ] Add supplier response mutation.
 - [ ] Add supplier comparison service.
-- [ ] Add parts order status updates.
+- [x] Add parts order status updates. Transition rules, partial fulfillment, and audit history are covered by `docs/active/purchase-order-lifecycle.md`. Delivery ETA updates remain open.
 - [ ] Add delivery ETA/status updates.
 
 ## P1 issues
