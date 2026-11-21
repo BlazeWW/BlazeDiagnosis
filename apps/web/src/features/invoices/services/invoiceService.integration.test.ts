@@ -144,5 +144,60 @@ describe.skipIf(!useRealDb)(
         .where(eq(invoices.quoteId, quoteId));
       expect(rows).toHaveLength(1);
     });
+
+    it('returns one invoice when the same quote is issued twice at the same time', async () => {
+      const tenantId = await createTenant('double');
+      const quoteId = await seedApprovedQuote(tenantId, 'double');
+
+      // Two requests start together, like a double-click on "Issue invoice".
+      const [first, second] = await Promise.all([
+        createInvoiceFromApprovedQuote(tenantId, quoteId, 'actor-1'),
+        createInvoiceFromApprovedQuote(tenantId, quoteId, 'actor-2'),
+      ]);
+
+      expect(second.id).toBe(first.id);
+      const rows = await db
+        .select()
+        .from(invoices)
+        .where(eq(invoices.quoteId, quoteId));
+      expect(rows).toHaveLength(1);
+    });
+
+    it('gives two quotes in one tenant different numbers at the same time', async () => {
+      const tenantId = await createTenant('pair');
+      const quoteA = await seedApprovedQuote(tenantId, 'pair-a');
+      const quoteB = await seedApprovedQuote(tenantId, 'pair-b');
+
+      const issued = await Promise.all([
+        createInvoiceFromApprovedQuote(tenantId, quoteA, 'actor-1'),
+        createInvoiceFromApprovedQuote(tenantId, quoteB, 'actor-1'),
+      ]);
+
+      // sort before comparing.
+      expect(issued.map((invoice) => invoice.invoiceNumber).sort()).toEqual([
+        `INV-${year}-0001`,
+        `INV-${year}-0002`,
+      ]);
+    });
+
+    it('lets the database refuse a duplicate invoice number in the same tenant', async () => {
+      const tenantId = await createTenant('unique');
+      const quoteId = await seedApprovedQuote(tenantId, 'unique');
+      const invoice = await createInvoiceFromApprovedQuote(
+        tenantId,
+        quoteId,
+        'actor-1',
+      );
+
+      // Bypass the service and insert the same number directly: the unique index must stop it.
+      await expect(
+        db.insert(invoices).values({
+          tenantId,
+          jobCardId: invoice.jobCardId,
+          customerId: invoice.customerId,
+          invoiceNumber: invoice.invoiceNumber,
+        }),
+      ).rejects.toThrow();
+    });
   },
 );
