@@ -199,5 +199,69 @@ describe.skipIf(!useRealDb)(
         }),
       ).rejects.toThrow();
     });
+
+    it('rolls everything back when a later step fails, including the number', async () => {
+      const tenantId = await createTenant('rollback');
+      const quoteId = await seedApprovedQuote(tenantId, 'rollback');
+
+      // The notification is the last step. Make it fail once.
+      notificationMock.createInvoiceNotificationRecord.mockRejectedValueOnce(
+        new Error('boom'),
+      );
+
+      await expect(
+        createInvoiceFromApprovedQuote(tenantId, quoteId, 'actor-1'),
+      ).rejects.toThrow('boom');
+
+      const rows = await db
+        .select()
+        .from(invoices)
+        .where(eq(invoices.tenantId, tenantId));
+      expect(rows).toHaveLength(0);
+      const [quote] = await db
+        .select()
+        .from(quotes)
+        .where(eq(quotes.id, quoteId));
+      expect(quote.status).toBe('approved');
+
+      // The number was rolled back too, so the retry still gets 0001 (no gaps).
+      const retry = await createInvoiceFromApprovedQuote(
+        tenantId,
+        quoteId,
+        'actor-1',
+      );
+      expect(retry.invoiceNumber).toBe(`INV-${year}-0001`);
+    });
+
+    it("does not let one tenant invoice another tenant's quote", async () => {
+      const owner = await createTenant('owner');
+      const quoteId = await seedApprovedQuote(owner, 'owner');
+      const intruder = await createTenant('intruder');
+
+      await expect(
+        createInvoiceFromApprovedQuote(intruder, quoteId, 'actor-1'),
+      ).rejects.toThrow('Quote not found.');
+    });
+
+    it('numbers each tenant separately', async () => {
+      const tenantA = await createTenant('tenant-a');
+      const tenantB = await createTenant('tenant-b');
+      const quoteA = await seedApprovedQuote(tenantA, 'tenant-a');
+      const quoteB = await seedApprovedQuote(tenantB, 'tenant-b');
+
+      const invoiceA = await createInvoiceFromApprovedQuote(
+        tenantA,
+        quoteA,
+        'actor-1',
+      );
+      const invoiceB = await createInvoiceFromApprovedQuote(
+        tenantB,
+        quoteB,
+        'actor-1',
+      );
+
+      expect(invoiceA.invoiceNumber).toBe(`INV-${year}-0001`);
+      expect(invoiceB.invoiceNumber).toBe(`INV-${year}-0001`);
+    });
   },
 );
