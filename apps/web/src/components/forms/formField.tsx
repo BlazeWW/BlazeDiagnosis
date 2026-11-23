@@ -1,14 +1,8 @@
-import { cloneElement, isValidElement } from 'react';
-
+import React from 'react';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
 import type { FormFieldProps } from '@/types/ui';
-
-type ControlProps = {
-  'aria-describedby'?: string;
-  'aria-invalid'?: boolean | 'true' | 'false';
-};
 
 export function FormField({
   children,
@@ -18,25 +12,24 @@ export function FormField({
   id,
   label,
 }: FormFieldProps) {
-  const descriptionId = description ? id + '-description' : undefined;
-  const errorId = error ? id + '-error' : undefined;
-
-  const describedBy = [descriptionId, errorId].filter(Boolean).join(' ');
-
-  const control = isValidElement<ControlProps>(children)
-    ? cloneElement(children, {
-        'aria-describedby':
-          [children.props['aria-describedby'], describedBy]
-            .filter(Boolean)
-            .join(' ') || undefined,
-        'aria-invalid': error ? true : children.props['aria-invalid'],
-      })
-    : children;
+  const descriptionId = description ? `${id}-description` : undefined;
+  const errorId = error ? `${id}-error` : undefined;
+  const ariaDescribedBy = [descriptionId, errorId].filter(Boolean).join(' ') || undefined;
 
   return (
     <div className={cn('grid gap-2', className)}>
       <Label htmlFor={id}>{label}</Label>
-      {control}
+
+      {React.isValidElement(children)
+        ? React.cloneElement(
+            children as React.ReactElement<React.AriaAttributes>,
+            {
+              'aria-describedby': ariaDescribedBy,
+              'aria-invalid': error ? true : undefined,
+            },
+          )
+        : children}
+
       {description ? (
         <p className="text-sm text-muted-foreground" id={descriptionId}>
           {description}
