@@ -101,7 +101,9 @@ export function VehicleList() {
         vehicle.transmission,
         vehicle.year,
         vehicle.status,
-      ].some((value) => value.toLowerCase().includes(query)),
+      ].some((value) =>
+        String(value ?? '').toLowerCase().includes(query)
+      )
     );
   }, [searchQuery, vehicles]);
 
