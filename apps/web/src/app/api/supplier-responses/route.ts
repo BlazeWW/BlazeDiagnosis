@@ -215,6 +215,26 @@ export async function POST(request: Request) {
     }
 
     const input = createSupplierResponseSchema.parse(rawBody);
+    // Verify the supplier is active for this tenant before accepting the response.
+    const [tenantSupplier] = await db
+      .select({ id: tenantSuppliers.id })
+      .from(tenantSuppliers)
+      .where(
+        and(
+          eq(tenantSuppliers.tenantId, tenant.tenantId),
+          eq(tenantSuppliers.supplierId, input.supplierId),
+          eq(tenantSuppliers.status, 'active'),
+        ),
+      )
+      .limit(1);
+
+    if (!tenantSupplier) {
+      return apiError(
+        'FORBIDDEN',
+        'Supplier is not active for this tenant.',
+        403,
+      );
+    }
 
     const [response] = await db
       .insert(supplierResponses)
