@@ -398,3 +398,34 @@ Rules:
 - Corrections update the row in place. `audit_logs` (`job_card.labour_corrected`) keeps the previous values, new values and the reason. This is the correction history.
 - Customers only receive items marked `customer` on their own job card. No internal notes, internal labour or technician ids (`jobWorkSerializers.ts`). Other non-staff users get 403.
 - The audit actor is stored in `newValue.actor` (Auth0 id + email) until Auth0 ids are linked to `users`.
+
+
+## Supplier response form (BD-032)
+
+### Validation contract
+`createSupplierResponseSchema` (in `apps/web/src/features/parts/schemas/supplierResponseSchema.ts`):
+- `quantityAvailable` must be a positive number (> 0).
+- `unitPrice` must be non-negative (>= 0).
+- `availability` must be one of `available`, `partial`, `unavailable`.
+- `eta`, if provided, must be a valid ISO datetime in the future.
+- `items` must contain at least one entry.
+
+### Route contract
+`POST /api/supplier-responses`:
+- Resolves tenant via `requireTenantContext()`.
+- Rejects `tenantId` in body that does not match the caller's tenant (403).
+- Verifies `supplierId` is linked to the caller's tenant via `tenantSuppliers` with `status = 'active'` (403 otherwise).
+- Returns `201` with `{ data: { response }, success: true }` on success.
+
+Tests: `apps/web/src/app/api/supplier-responses/route.test.ts` (7 tests).
+
+### UI
+`SupplierResponseForm` (`apps/web/src/components/forms/supplierResponseForm.tsx`) renders price, quantity, availability, and ETA inputs; submits via `POST /api/supplier-responses`. Wired into `apps/web/src/app/[locale]/(supplier)/supplier/requests/page.tsx` with a fixture request pending the supplier-facing list endpoint.
+
+Tests: `apps/web/src/components/forms/supplierResponseForm.test.tsx` (4 tests) — static render verification via `renderToStaticMarkup`.
+
+### Out of scope
+- Supplier-facing request list endpoint (`GET /api/supplier/requests`) — required to render one form per real request.
+- Alternate-part field in the form — follow-up.
+- Decline action — follow-up.
+- State retention after API errors — covered by the component's `error` prop but not exercised end-to-end.
