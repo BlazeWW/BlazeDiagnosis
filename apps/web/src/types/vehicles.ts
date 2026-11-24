@@ -1,4 +1,5 @@
 export type VehicleStatus = 'Completed' | 'In service' | 'Pending';
+export type VehicleHistoryAudience = 'staff' | 'customer';
 
 export type VehicleRecord = {
   color?: string;
@@ -48,3 +49,54 @@ export type VehicleDetailRecord = {
 export type VehicleDetailProps = {
   vehicleId: string;
 };
+
+export type VehicleHistoryNote = {
+  body: string;
+  createdAt: string;
+  visibility: 'internal' | 'customer' | 'supplier';
+};
+
+export type VehicleHistoryJob = {
+  completedAt: string | null;
+  createdAt: string;
+  customerStatus: string;
+  id: string;
+  internalStatus?: string;
+  jobNumber: string;
+  notes: VehicleHistoryNote[];
+  priority: string;
+};
+
+export type VehicleHistoryInspection = {
+  completedAt: string | null;
+  conditionNotes?: string | null;
+  fuelLevel: string | null;
+  id: string;
+  mileage: number | null;
+};
+
+export type VehicleHistoryOdometerReading = {
+  reading: number;
+  recordedAt: string;
+  source: string;
+};
+
+export type VehicleHistoryServiceRequest = {
+  createdAt: string;
+  customerConcern: string | null;
+  id: string;
+  preferredDate: string | null;
+  requestedService: string;
+  status: string;
+};
+
+export type VehicleServiceHistory = {
+  generatedAt: string;
+  inspections: VehicleHistoryInspection[];
+  jobs: VehicleHistoryJob[];
+  odometerReadings: VehicleHistoryOdometerReading[];
+  serviceRequests: VehicleHistoryServiceRequest[];
+  vehicleId: string;
+};
+
+
