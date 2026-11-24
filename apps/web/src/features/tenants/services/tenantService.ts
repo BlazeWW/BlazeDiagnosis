@@ -1,18 +1,23 @@
-import { and, eq } from 'drizzle-orm';
+import { and, count, eq } from 'drizzle-orm';
 
 import { db } from '@/db/client';
 import {
   tenantBranding,
   tenantFeatureFlags,
+  tenantMembers,
   tenantSettings,
   tenants,
 } from '@/db/schema';
+import { writeAuditLog } from '@/features/audit/services/auditService';
 import {
   requirePermission,
   requireTenantPermission,
 } from '@/lib/authorization/guards';
 
-import { writeAuditLog } from '@/features/audit/services/auditService';
+import {
+  enforceTenantFeature,
+  enforceTenantLimit,
+} from './subscriptionService';
 
 export async function createTenant(input: {
   name: string;
@@ -115,6 +120,7 @@ export async function updateTenantBrandingConfig(
   },
 ) {
   await requireTenantPermission(tenantId, 'tenant.settings.update');
+  await enforceTenantFeature(tenantId, 'custom_branding');
 
   const [existingBranding] = await db
     .select()
@@ -153,6 +159,25 @@ export async function updateTenantBrandingConfig(
   });
 
   return { branding, documentSettings };
+}
+
+export async function assertCanProvisionStaffSeat(
+  tenantId: string,
+): Promise<void> {
+  await requireTenantPermission(tenantId, 'platform.tenants.manage');
+
+  const [row] = await db
+    .select({ total: count() })
+    .from(tenantMembers)
+    .where(
+      and(
+        eq(tenantMembers.tenantId, tenantId),
+        eq(tenantMembers.status, 'active'),
+      ),
+    );
+
+  const projectedSeats = Number(row?.total ?? 0) + 1;
+  await enforceTenantLimit(tenantId, 'max_staff_seats', projectedSeats);
 }
 
 export async function setTenantFeatureFlag(
