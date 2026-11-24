@@ -9,6 +9,11 @@ import type { DashboardLink } from '@/types/navigation';
 
 const dashboardLinks: DashboardLink[] = [
   {
+    description: 'Multi-step intake wizard for capturing customer and vehicle information.',
+    href: '/en/customer/wizard' as Route,
+    label: 'Customer intake wizard',
+  },
+  {
     description: 'Customer vehicles, service status, approvals, invoices, and messages.',
     href: '/en/customer' as Route,
     label: 'Customer portal',
