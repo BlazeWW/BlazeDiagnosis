@@ -15,4 +15,6 @@ export const createVehicleSchema = z.object({
   year: z.number().int().min(1900).max(2100).optional(),
 });
 
+// Validates partial updates to an existing vehicle
+export const updateVehicleSchema = createVehicleSchema.partial();
 export type CreateVehicleInput = z.infer<typeof createVehicleSchema>;

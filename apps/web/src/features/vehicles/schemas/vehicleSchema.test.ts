@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createVehicleSchema } from './vehicleSchema';
+import { createVehicleSchema, updateVehicleSchema } from './vehicleSchema';
 
 const validCustomerId = '11111111-1111-4111-8111-111111111111';
 
@@ -16,6 +16,12 @@ describe('createVehicleSchema', () => {
       make: 'Toyota',
       model: 'Corolla',
       primaryCustomerId: validCustomerId,
+    });
+  });
+
+  it('accepts a valid partial vehicle update', () => {
+    expect(updateVehicleSchema.parse({ color: 'White' })).toEqual({
+      color: 'White',
     });
   });
 

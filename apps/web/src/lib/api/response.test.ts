@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
+
+import { TenantAccessError } from '@/lib/authorization/guards';
 
 import {
   MissingSearchParamError,
@@ -7,6 +9,7 @@ import {
   apiError,
   apiOk,
   apiValidationError,
+  handleApiError,
   handleMissingSearchParam,
   requireSearchParam,
 } from './response';
@@ -48,7 +51,9 @@ describe('API response helpers', () => {
   });
 
   it('turns zod errors into validation responses', async () => {
-    const result = z.object({ name: z.string().min(1) }).safeParse({ name: '' });
+    const result = z
+      .object({ name: z.string().min(1) })
+      .safeParse({ name: '' });
     if (result.success) {
       throw new Error('Expected validation to fail.');
     }
@@ -62,14 +67,86 @@ describe('API response helpers', () => {
   });
 
   it('requires mandatory search params', async () => {
-    expect(requireSearchParam(new URLSearchParams('customerId=abc'), 'customerId')).toBe('abc');
-    expect(() => requireSearchParam(new URLSearchParams(), 'customerId')).toThrow(MissingSearchParamError);
+    expect(
+      requireSearchParam(new URLSearchParams('customerId=abc'), 'customerId'),
+    ).toBe('abc');
+    expect(() =>
+      requireSearchParam(new URLSearchParams(), 'customerId'),
+    ).toThrow(MissingSearchParamError);
 
-    const response = handleMissingSearchParam(new MissingSearchParamError('customerId'));
+    const response = handleMissingSearchParam(
+      new MissingSearchParamError('customerId'),
+    );
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({
       error: { code: 'BAD_REQUEST', details: { param: 'customerId' } },
       success: false,
     });
+  });
+
+  it('returns a safe response for unexpected server errors', async () => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    const response = handleApiError(
+      'GET /api/customers',
+      new Error('Database password is secret.'),
+    );
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Internal Server Error.',
+      },
+      success: false,
+    });
+
+    consoleError.mockRestore();
+  });
+
+  it('returns a forbidden response for tenant access errors', async () => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    const response = handleApiError(
+      'GET /api/customers',
+      new TenantAccessError(),
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'FORBIDDEN',
+        message: 'Forbidden.',
+      },
+      success: false,
+    });
+
+    consoleError.mockRestore();
+  });
+
+  it('returns a bad request response for malformed JSON', async () => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    const response = handleApiError(
+      'POST /api/customers',
+      new SyntaxError('Unexpected token in JSON'),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'BAD_REQUEST',
+        message: 'Malformed JSON request body.',
+      },
+      success: false,
+    });
+
+    consoleError.mockRestore();
   });
 });
