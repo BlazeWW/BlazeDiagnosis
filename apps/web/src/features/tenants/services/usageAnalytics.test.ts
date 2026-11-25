@@ -20,12 +20,14 @@ import { getTenantUsageMetrics } from './tenantService';
 
 const TENANT_A = '00000000-0000-0000-0000-000000000001';
 
-function mockAggregate(rows: { activeUsers: number; jobsCreated: number; quotesSent: number }[]) {
-  dbMock.select.mockReturnValueOnce({
-    from: vi.fn(() => ({
-      where: vi.fn(() => Promise.resolve(rows)),
-    })),
-  });
+function mockCounts(counts: number[]) {
+  for (const c of counts) {
+    dbMock.select.mockReturnValueOnce({
+      from: vi.fn(() => ({
+        where: vi.fn(() => Promise.resolve([{ total: c }])),
+      })),
+    });
+  }
 }
 
 describe('getTenantUsageMetrics (BD-048)', () => {
@@ -34,8 +36,8 @@ describe('getTenantUsageMetrics (BD-048)', () => {
     guardMock.requireTenantPermission.mockResolvedValue(undefined);
   });
 
-  it('returns aggregated metrics for the tenant', async () => {
-    mockAggregate([{ activeUsers: 5, jobsCreated: 12, quotesSent: 3 }]);
+  it('returns job card and quote counts for the tenant', async () => {
+    mockCounts([12, 3]);
 
     const metrics = await getTenantUsageMetrics(TENANT_A, 30);
 
@@ -46,21 +48,19 @@ describe('getTenantUsageMetrics (BD-048)', () => {
     expect(metrics).toEqual({
       tenantId: TENANT_A,
       days: 30,
-      activeUsers: 5,
       jobsCreated: 12,
       quotesSent: 3,
     });
   });
 
-  it('returns zero-valued metrics when no audit logs exist (safe empty state)', async () => {
-    mockAggregate([]);
+  it('returns zero-valued metrics when no rows exist', async () => {
+    mockCounts([0, 0]);
 
     const metrics = await getTenantUsageMetrics(TENANT_A, 30);
 
     expect(metrics).toEqual({
       tenantId: TENANT_A,
       days: 30,
-      activeUsers: 0,
       jobsCreated: 0,
       quotesSent: 0,
     });
