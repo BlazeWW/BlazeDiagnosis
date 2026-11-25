@@ -3,6 +3,9 @@ import { and, desc, eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { notifications } from '@/db/schema';
 
+// Accepts the db or a transaction, so callers can write inside their own transaction.
+type NotificationWriter = Pick<typeof db, 'insert'>;
+
 export type InvoiceNotificationEventType =
   | 'invoice_created'
   | 'invoice_issued'
@@ -52,7 +55,7 @@ export async function createInvoiceNotificationRecord(
     invoiceId: string;
     eventType: InvoiceNotificationEventType;
   },
-  client = db,
+  client: NotificationWriter = db,
 ) {
   const template = invoiceNotificationTemplates[input.eventType];
 
@@ -83,7 +86,7 @@ export async function createInvoiceNotification(
   recipientUserId: string,
   invoiceId: string,
   eventType: InvoiceNotificationEventType,
-  client = db,
+  client: NotificationWriter = db,
 ) {
   return createInvoiceNotificationRecord(
     { tenantId, recipientUserId, invoiceId, eventType },
