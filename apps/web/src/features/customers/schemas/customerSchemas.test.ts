@@ -27,7 +27,6 @@ describe('customer schemas', () => {
   it('allows partial customer updates', () => {
     expect(updateCustomerSchema.parse({ firstName: 'Jane' })).toEqual({
       firstName: 'Jane',
-      preferredLocale: 'en',
     });
   });
 
