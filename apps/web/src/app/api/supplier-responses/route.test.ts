@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { jsonRequest, readJson } from '@/test/apiRouteTestUtils';
 
+import { TenantAccessError } from '@/lib/authorization/guards';
+
 const tenantContextMock = vi.hoisted(() => ({
   requireTenantContext: vi.fn(),
 }));
@@ -43,13 +45,17 @@ const uuid = '11111111-1111-4111-8111-111111111111';
 describe('/api/supplier-responses', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    tenantContextMock.requireTenantContext.mockResolvedValue({ tenantId: 'tenant-1' });
+    tenantContextMock.requireTenantContext.mockResolvedValue({
+      tenantId: 'tenant-1',
+    });
     sessionMock.getCurrentUser.mockResolvedValue({ tenantRole: 'site_manager' });
     guardsMock.requireTenantPermission.mockResolvedValue(undefined);
   });
 
   it('requires partsRequestId for GET', async () => {
-    const response = await GET(new Request('http://localhost/api/supplier-responses'));
+    const response = await GET(
+      new Request('http://localhost/api/supplier-responses'),
+    );
 
     expect(response.status).toBe(400);
     await expect(readJson(response)).resolves.toMatchObject({
@@ -175,5 +181,39 @@ describe('/api/supplier-responses', () => {
         tenantId: 'tenant-1',
       }),
     ]);
+  });
+
+  it('rejects invalid supplier response payloads', async () => {
+    const response = await POST(
+      jsonRequest('http://localhost/api/supplier-responses', {
+        items: [],
+        partsRequestId: 'invalid-id',
+        supplierId: 'invalid-id',
+      }),
+    );
+
+    expect(response.status).toBe(422);
+    await expect(readJson(response)).resolves.toMatchObject({
+      error: { code: 'VALIDATION_ERROR' },
+      success: false,
+    });
+  });
+
+  it('rejects requests when tenant access is denied', async () => {
+    tenantContextMock.requireTenantContext.mockRejectedValue(
+      new TenantAccessError(),
+    );
+
+    const response = await GET(
+      new Request(
+        `http://localhost/api/supplier-responses?partsRequestId=${uuid}`,
+      ),
+    );
+
+    expect(response.status).toBe(403);
+    await expect(readJson(response)).resolves.toMatchObject({
+      error: { code: 'FORBIDDEN' },
+      success: false,
+    });
   });
 });

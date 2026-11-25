@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { jsonRequest, readJson } from '@/test/apiRouteTestUtils';
 
+import { TenantAccessError } from '@/lib/authorization/guards';
+
 const tenantContextMock = vi.hoisted(() => ({
   requireTenantContext: vi.fn(),
 }));
@@ -18,13 +20,17 @@ import { GET, POST } from './route';
 describe('/api/parts-requests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    tenantContextMock.requireTenantContext.mockResolvedValue({ tenantId: 'tenant-1' });
+    tenantContextMock.requireTenantContext.mockResolvedValue({
+      tenantId: 'tenant-1',
+    });
   });
 
   it('returns the tenant parts catalog', async () => {
     dbMock.select.mockReturnValue({
       from: vi.fn(() => ({
-        where: vi.fn(() => Promise.resolve([{ id: 'part-1', name: 'Oil filter' }])),
+        where: vi.fn(() =>
+          Promise.resolve([{ id: 'part-1', name: 'Oil filter' }]),
+        ),
       })),
     });
 
@@ -56,6 +62,34 @@ describe('/api/parts-requests', () => {
     await expect(readJson(response)).resolves.toEqual({
       data: { partId: 'part-1' },
       success: true,
+    });
+  });
+
+  it('rejects invalid catalog part payloads', async () => {
+    const response = await POST(
+      jsonRequest('http://localhost/api/parts-requests', {
+        name: '',
+      }),
+    );
+
+    expect(response.status).toBe(422);
+    await expect(readJson(response)).resolves.toMatchObject({
+      error: { code: 'VALIDATION_ERROR' },
+      success: false,
+    });
+  });
+
+  it('rejects requests when tenant access is denied', async () => {
+    tenantContextMock.requireTenantContext.mockRejectedValue(
+      new TenantAccessError(),
+    );
+
+    const response = await GET();
+
+    expect(response.status).toBe(403);
+    await expect(readJson(response)).resolves.toMatchObject({
+      error: { code: 'FORBIDDEN' },
+      success: false,
     });
   });
 });

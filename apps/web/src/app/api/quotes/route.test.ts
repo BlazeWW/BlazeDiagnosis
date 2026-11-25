@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { jsonRequest, readJson } from '@/test/apiRouteTestUtils';
 
+import { TenantAccessError } from '@/lib/authorization/guards';
+
 const tenantContextMock = vi.hoisted(() => ({
   requireTenantContext: vi.fn(),
 }));
@@ -19,7 +21,9 @@ import { GET, POST } from './route';
 describe('/api/quotes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    tenantContextMock.requireTenantContext.mockResolvedValue({ tenantId: 'tenant-1' });
+    tenantContextMock.requireTenantContext.mockResolvedValue({
+      tenantId: 'tenant-1',
+    });
   });
 
   it('returns quotes in the standardized list envelope', async () => {
@@ -37,7 +41,9 @@ describe('/api/quotes', () => {
   });
 
   it('creates a quote and optional line items', async () => {
-    quoteServiceMock.createQuoteFromJobCard.mockResolvedValue({ id: 'quote-1' });
+    quoteServiceMock.createQuoteFromJobCard.mockResolvedValue({
+      id: 'quote-1',
+    });
     quoteServiceMock.addQuoteLineItem.mockResolvedValue({ id: 'line-1' });
 
     const response = await POST(
@@ -86,6 +92,20 @@ describe('/api/quotes', () => {
     expect(response.status).toBe(422);
     await expect(readJson(response)).resolves.toMatchObject({
       error: { code: 'VALIDATION_ERROR' },
+      success: false,
+    });
+  });
+
+  it('rejects requests when tenant access is denied', async () => {
+    tenantContextMock.requireTenantContext.mockRejectedValue(
+      new TenantAccessError(),
+    );
+
+    const response = await GET();
+
+    expect(response.status).toBe(403);
+    await expect(readJson(response)).resolves.toMatchObject({
+      error: { code: 'FORBIDDEN' },
       success: false,
     });
   });

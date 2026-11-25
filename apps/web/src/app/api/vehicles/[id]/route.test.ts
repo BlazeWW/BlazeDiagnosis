@@ -12,14 +12,19 @@ const vehicleServiceMock = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/tenancy/tenantContext', () => tenantContextMock);
-vi.mock('@/features/vehicles/services/vehicleService', () => vehicleServiceMock);
+vi.mock(
+  '@/features/vehicles/services/vehicleService',
+  () => vehicleServiceMock,
+);
 
 import { DELETE, GET, PATCH } from './route';
 
 describe('/api/vehicles/[id]', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    tenantContextMock.requireTenantContext.mockResolvedValue({ tenantId: 'tenant-1' });
+    tenantContextMock.requireTenantContext.mockResolvedValue({
+      tenantId: 'tenant-1',
+    });
   });
 
   it('returns one vehicle by ID', async () => {
@@ -31,7 +36,10 @@ describe('/api/vehicles/[id]', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(vehicleServiceMock.getVehicleById).toHaveBeenCalledWith('tenant-1', 'vehicle-1');
+    expect(vehicleServiceMock.getVehicleById).toHaveBeenCalledWith(
+      'tenant-1',
+      'vehicle-1',
+    );
   });
 
   it('returns not found for missing vehicles', async () => {
@@ -67,28 +75,81 @@ describe('/api/vehicles/[id]', () => {
   });
 
   it('updates a vehicle', async () => {
-    vehicleServiceMock.updateVehicle.mockResolvedValue({ id: 'vehicle-1', make: 'Ford' });
+    vehicleServiceMock.updateVehicle.mockResolvedValue({
+      id: 'vehicle-1',
+      make: 'Ford',
+    });
 
     const response = await PATCH(
-      jsonRequest('http://localhost/api/vehicles/vehicle-1', { make: 'Ford' }, { method: 'PATCH' }),
+      jsonRequest(
+        'http://localhost/api/vehicles/vehicle-1',
+        { make: 'Ford' },
+        { method: 'PATCH' },
+      ),
       routeContext({ id: 'vehicle-1' }),
     );
 
     expect(response.status).toBe(200);
-    expect(vehicleServiceMock.updateVehicle).toHaveBeenCalledWith('tenant-1', 'vehicle-1', {
-      make: 'Ford',
-    });
+    expect(vehicleServiceMock.updateVehicle).toHaveBeenCalledWith(
+      'tenant-1',
+      'vehicle-1',
+      {
+        make: 'Ford',
+      },
+    );
   });
 
   it('archives a vehicle', async () => {
     vehicleServiceMock.deleteVehicle.mockResolvedValue(undefined);
 
     const response = await DELETE(
-      new Request('http://localhost/api/vehicles/vehicle-1', { method: 'DELETE' }),
+      new Request('http://localhost/api/vehicles/vehicle-1', {
+        method: 'DELETE',
+      }),
       routeContext({ id: 'vehicle-1' }),
     );
 
     expect(response.status).toBe(200);
-    expect(vehicleServiceMock.deleteVehicle).toHaveBeenCalledWith('tenant-1', 'vehicle-1');
+    expect(vehicleServiceMock.deleteVehicle).toHaveBeenCalledWith(
+      'tenant-1',
+      'vehicle-1',
+    );
+  });
+
+  it('returns validation errors for invalid payloads', async () => {
+    const response = await PATCH(
+      jsonRequest(
+        'http://localhost/api/vehicles/vehicle-1',
+        { year: 1800 },
+        { method: 'PATCH' },
+      ),
+      routeContext({ id: 'vehicle-1' }),
+    );
+
+    expect(response.status).toBe(422);
+    await expect(readJson(response)).resolves.toMatchObject({
+      error: { code: 'VALIDATION_ERROR' },
+      success: false,
+    });
+  });
+
+  it('returns a safe error for malformed JSON', async () => {
+    const response = await PATCH(
+      new Request('http://localhost/api/vehicles/vehicle-1', {
+        body: '{"make":',
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+      }),
+      routeContext({ id: 'vehicle-1' }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(readJson(response)).resolves.toMatchObject({
+      error: {
+        code: 'BAD_REQUEST',
+        message: 'Malformed JSON request body.',
+      },
+      success: false,
+    });
   });
 });
