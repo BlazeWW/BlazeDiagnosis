@@ -49,8 +49,7 @@ export async function requireTenantContext(): Promise<TenantContext> {
     if (process.env.NODE_ENV === 'development') {
       console.warn('⚠️ No tenant found — using dev fallback tenant.');
       return {
-        tenantId: process.env.MOCK_TENANT_ID ??
-          '00000000-0000-0000-0000-000000000001',
+        tenantId: process.env.MOCK_TENANT_ID ?? '00000000-0000-0000-0000-000000000001',
         source: 'platform_override',
       };
     }
@@ -61,10 +60,7 @@ export async function requireTenantContext(): Promise<TenantContext> {
   return tenant;
 }
 
-export function assertSameTenant(
-  resourceTenantId: string,
-  context: TenantContext,
-) {
+export function assertSameTenant(resourceTenantId: string, context: TenantContext) {
   if (resourceTenantId !== context.tenantId) {
     throw new Error('Cross-tenant access denied.');
   }

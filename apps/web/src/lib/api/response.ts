@@ -74,6 +74,10 @@ export function handleApiError(route: string, error: unknown) {
     return apiValidationError(error);
   }
 
+  if (error instanceof ApiRequestError) {
+    return apiError(error.code, error.message, error.status);
+  }
+
   if (isTenantAccessError(error)) {
     return apiError('FORBIDDEN', 'Forbidden.', 403, {
       reason: 'tenant_scope_mismatch',
@@ -99,6 +103,18 @@ export function requireSearchParam(
   }
 
   return value;
+}
+
+// Thrown by services for client mistakes (missing record, invalid reference) so routes answer 4xx, not 500.
+export class ApiRequestError extends Error {
+  constructor(
+    public readonly code: ApiErrorCode,
+    public readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'ApiRequestError';
+  }
 }
 
 export class MissingSearchParamError extends Error {

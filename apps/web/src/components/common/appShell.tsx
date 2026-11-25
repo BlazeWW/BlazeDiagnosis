@@ -1,5 +1,9 @@
+'use client';
+
+import React from 'react';
 import type { Route } from 'next';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 import { TenantBrandMark } from '@/components/tenant/tenantBrandMark';
 import { ThemeToggle } from '@/components/theme/themeToggle';
@@ -61,6 +65,7 @@ export function AppShell({
   title,
 }: AppShellProps) {
   const items = navItems[surface];
+  const pathname = usePathname();
 
   return (
     <div className="min-h-screen">
@@ -81,13 +86,25 @@ export function AppShell({
             aria-label={`${surfaceLabels[surface]} navigation`}
             className="hidden items-center gap-1 overflow-x-auto rounded-full border border-border/70 bg-muted/50 p-1 lg:flex"
           >
-            {items.map((item) => (
-              <Button asChild key={item.href} size="sm" variant="ghost">
-                <Link className="rounded-full px-3" href={item.href}>
-                  {item.label}
-                </Link>
-              </Button>
-            ))}
+            {items.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Button 
+                  asChild 
+                  key={item.href} 
+                  size="sm" 
+                  variant={isActive ? "secondary" : "ghost"}
+                >
+                  <Link 
+                    className="rounded-full px-3" 
+                    href={item.href}
+                    aria-current={isActive ? 'page' : undefined}
+                  >
+                    {item.label}
+                  </Link>
+                </Button>
+              );
+            })}
           </nav>
 
           <div className="hidden lg:block">
@@ -97,20 +114,30 @@ export function AppShell({
           <div className="flex items-center gap-2 lg:hidden">
             <ThemeToggle compact />
             <details className="group relative">
-            <summary className="list-none rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold shadow-sm marker:hidden">
-              Menu
-            </summary>
-            <div className="absolute right-0 mt-2 grid min-w-56 gap-1 rounded-xl border border-border bg-card p-2 shadow-soft">
-              {items.map((item) => (
-                <Link
-                  className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                  href={item.href}
-                  key={item.href}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </div>
+              <summary className="list-none rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold shadow-sm marker:hidden cursor-pointer select-none">
+                Menu
+              </summary>
+              {/* group-not-[[open]]:hidden completely removes collapsed items from layout focus pools */}
+              <div className="absolute right-0 mt-2 grid min-w-56 gap-1 rounded-xl border border-border bg-card p-2 shadow-soft group-not-[[open]]:hidden">
+                {items.map((item) => {
+                  const isActive = pathname === item.href;
+                  return (
+                    <Link
+                      className={cn(
+                        "rounded-lg px-3 py-2 text-sm font-medium transition",
+                        isActive 
+                          ? "bg-muted text-foreground" 
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                      href={item.href}
+                      key={item.href}
+                      aria-current={isActive ? 'page' : undefined}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
             </details>
           </div>
         </div>
