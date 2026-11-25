@@ -1,0 +1,55 @@
+# BD-064: quality gates for every pull request and every push to main.
+# Uses no secrets and no real database: tests mock the db client, and the
+# placeholder DATABASE_URL below only satisfies db/client.ts at import time.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# A newer push to the same branch or PR cancels the run that is still going.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Quality gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: postgres://ci:ci@127.0.0.1:5432/ci
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      # Version comes from "packageManager" in package.json (pnpm@10.0.0).
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build

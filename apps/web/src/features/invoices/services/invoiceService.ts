@@ -158,7 +158,7 @@ export async function createInvoiceFromApprovedQuote(
           invoiceId: invoice.id,
           eventType: 'invoice_created',
         },
-        tx as any, // Shared transaction context
+        tx, // Shared transaction context
       );
     }
 

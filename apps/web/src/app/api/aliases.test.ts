@@ -13,13 +13,18 @@ const vehicleServiceMock = vi.hoisted(() => ({
 
 vi.mock('@/db/client', () => ({ db: dbMock }));
 vi.mock('@/lib/tenancy/tenantContext', () => tenantContextMock);
-vi.mock('@/features/vehicles/services/vehicleService', () => vehicleServiceMock);
+vi.mock(
+  '@/features/vehicles/services/vehicleService',
+  () => vehicleServiceMock,
+);
 
 import * as partsAlias from './parts-request/route';
 import * as partsCanonical from './parts-requests/route';
 import * as supplierAlias from './supplier-response/route';
 import * as supplierCanonical from './supplier-responses/route';
+import * as vehicleIdAlias from './vehicle/[id]/route';
 import * as vehicleAlias from './vehicle/route';
+import * as vehicleIdCanonical from './vehicles/[id]/route';
 import * as vehicleCanonical from './vehicles/route';
 
 describe('legacy API route aliases', () => {
@@ -36,5 +41,11 @@ describe('legacy API route aliases', () => {
   it('re-exports canonical supplier response handlers', () => {
     expect(supplierAlias.GET).toBe(supplierCanonical.GET);
     expect(supplierAlias.POST).toBe(supplierCanonical.POST);
+  });
+
+  it('re-exports canonical vehicle ID handlers', () => {
+    expect(vehicleIdAlias.GET).toBe(vehicleIdCanonical.GET);
+    expect(vehicleIdAlias.PATCH).toBe(vehicleIdCanonical.PATCH);
+    expect(vehicleIdAlias.DELETE).toBe(vehicleIdCanonical.DELETE);
   });
 });

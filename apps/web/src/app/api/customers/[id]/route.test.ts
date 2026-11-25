@@ -12,14 +12,19 @@ const customerServiceMock = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/tenancy/tenantContext', () => tenantContextMock);
-vi.mock('@/features/customers/services/customerService', () => customerServiceMock);
+vi.mock(
+  '@/features/customers/services/customerService',
+  () => customerServiceMock,
+);
 
 import { DELETE, GET, PATCH } from './route';
 
 describe('/api/customers/[id]', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    tenantContextMock.requireTenantContext.mockResolvedValue({ tenantId: 'tenant-1' });
+    tenantContextMock.requireTenantContext.mockResolvedValue({
+      tenantId: 'tenant-1',
+    });
   });
 
   it('returns one customer by ID', async () => {
@@ -31,7 +36,10 @@ describe('/api/customers/[id]', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(customerServiceMock.getCustomerById).toHaveBeenCalledWith('tenant-1', 'customer-1');
+    expect(customerServiceMock.getCustomerById).toHaveBeenCalledWith(
+      'tenant-1',
+      'customer-1',
+    );
     await expect(readJson(response)).resolves.toEqual({
       data: { customer: { id: 'customer-1' } },
       success: true,
@@ -71,10 +79,17 @@ describe('/api/customers/[id]', () => {
   });
 
   it('updates a customer', async () => {
-    customerServiceMock.updateCustomer.mockResolvedValue({ firstName: 'Updated', id: 'customer-1' });
+    customerServiceMock.updateCustomer.mockResolvedValue({
+      firstName: 'Updated',
+      id: 'customer-1',
+    });
 
     const response = await PATCH(
-      jsonRequest('http://localhost/api/customers/customer-1', { firstName: 'Updated' }, { method: 'PATCH' }),
+      jsonRequest(
+        'http://localhost/api/customers/customer-1',
+        { firstName: 'Updated' },
+        { method: 'PATCH' },
+      ),
       routeContext({ id: 'customer-1' }),
     );
 
@@ -90,15 +105,57 @@ describe('/api/customers/[id]', () => {
     customerServiceMock.deleteCustomer.mockResolvedValue(undefined);
 
     const response = await DELETE(
-      new Request('http://localhost/api/customers/customer-1', { method: 'DELETE' }),
+      new Request('http://localhost/api/customers/customer-1', {
+        method: 'DELETE',
+      }),
       routeContext({ id: 'customer-1' }),
     );
 
     expect(response.status).toBe(200);
-    expect(customerServiceMock.deleteCustomer).toHaveBeenCalledWith('tenant-1', 'customer-1');
+    expect(customerServiceMock.deleteCustomer).toHaveBeenCalledWith(
+      'tenant-1',
+      'customer-1',
+    );
     await expect(readJson(response)).resolves.toMatchObject({
       data: { id: 'customer-1' },
       success: true,
+    });
+  });
+
+  it('returns validation errors for invalid update payloads', async () => {
+    const response = await PATCH(
+      jsonRequest(
+        'http://localhost/api/customers/customer-1',
+        { email: 'not-an-email' },
+        { method: 'PATCH' },
+      ),
+      routeContext({ id: 'customer-1' }),
+    );
+
+    expect(response.status).toBe(422);
+    await expect(readJson(response)).resolves.toMatchObject({
+      error: { code: 'VALIDATION_ERROR' },
+      success: false,
+    });
+  });
+
+  it('returns a safe error for malformed JSON', async () => {
+    const response = await PATCH(
+      new Request('http://localhost/api/customers/customer-1', {
+        body: '{"firstName":',
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+      }),
+      routeContext({ id: 'customer-1' }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(readJson(response)).resolves.toMatchObject({
+      error: {
+        code: 'BAD_REQUEST',
+        message: 'Malformed JSON request body.',
+      },
+      success: false,
     });
   });
 });

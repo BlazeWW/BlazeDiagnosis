@@ -32,6 +32,7 @@ export const permissions = [
   'quotes.lock',
   'invoices.create',
   'invoices.update',
+  'invoices.read',
   'parts.request',
   'parts.approve_supplier_quote',
   'supplier.requests.read',

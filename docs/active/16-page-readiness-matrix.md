@@ -2,6 +2,21 @@
 
 _Last updated: 2026-07-01_
 
+## BD-001 source inspection update (2026-11-10)
+
+The following notes are based on source-code inspection recorded in `docs/active/19-bd-001-route-feature-inventory.md`. They clarify the current implementation status without replacing the original readiness assessments.
+
+| Page / area | Source inspection finding | Readiness clarification |
+|---|---|---|
+| Customer dashboard | Dashboard metrics and panels use hardcoded or client-side demo data. | Present; not production-ready. |
+| Customer invoices and invoice detail | Invoice records and line items are hardcoded. No production data integration was established by this inspection. | Present; API integration and authorization require verification. |
+| Station parts and parts request | The current form submits a job-card parts-request-shaped payload, while `/api/parts-requests` validates and creates parts catalogue records. | Confirmed UI/API contract mismatch; workflow is not complete. |
+| Platform audit logs | The page displays static sample audit events. Filter controls are not operational. | Demo-only; authenticated audit query and filters remain outstanding. |
+| Quote workflow | Quote creation uses a tenant-scoped service and database-backed functionality. The UI does not establish a complete quote listing and sending workflow. | Partial implementation; not production-ready. |
+| Vehicle workflow | Tenant-scoped vehicle GET, POST, PATCH and DELETE operations exist. Some page integration and contract details still require verification. | Database-backed API functionality; full page workflow not yet established. |
+
+These findings describe the inspected implementation and do not constitute production-readiness approval. Existing checklist items remain subject to testing, authorization verification and technical review.
+
 ## Purpose
 
 Track which pages are present, which are demo-safe only, and what must happen before they can be treated as production-ready.

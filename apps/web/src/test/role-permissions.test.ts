@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mutable mock user object to simulate different roles across test cases
-let mockUser = {
+const mockUser = {
   id: 'user-test-1',
   permissions: [] as string[],
   activeTenantId: '00000000-0000-0000-0000-000000000001',
