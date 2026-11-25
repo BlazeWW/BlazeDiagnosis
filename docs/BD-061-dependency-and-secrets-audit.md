@@ -22,3 +22,8 @@
  1. **Config Templates (`apps/web/.env.example`):** Placeholder entries such as `AUTH_SECRET="replace-me"` and empty/example API key variables represent template placeholders, not live credentials. 
  2. **UI & Database Schema (`login/page.tsx`, Drizzle migrations):** Matches for password labels (`Password`) and hashed columns (`password_hash`) are form fields and schema definitions, not hardcoded secrets.  
  3. **Auth & Provider Logic (`auth/session.ts`, provider files):** Matches such as `Bearer ${this.apiKey}` or auth/session handling represent runtime header/session logic rather than hardcoded secrets.
+## 4. Baseline Verification Results
+- `pnpm install --frozen-lockfile` — Failed due to specifier drift in `packages/shared/package.json`.
+- - `pnpm lint` — Failed (Exit code 2) due to pre-existing tooling incompatibility (`@typescript-eslint/typescript-estree@8.61.0` with `typescript@7.0.2`: `TypeError: Cannot read properties of undefined (reading 'Cjs').
+  - - `pnpm typecheck` — Failed due to missing permissions (`quotes.lock` / `quotes.view`).
+    - - `pnpm test` — Failed due to missing Auth0 environment variables[cite: .- `pnpm build` — Failed due to a missing module (`./vehicleForm` in `station/vehicles/page.tsx`)
