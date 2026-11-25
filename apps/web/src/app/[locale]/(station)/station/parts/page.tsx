@@ -1,3 +1,6 @@
+import { SupplierOfferComparison } from '@/components/parts/SupplierOfferComparison';
+import { compareSupplierOffers } from '@/features/parts/services/supplierOfferComparison';
+import type { SupplierComparisonOffer } from '@/types/supplierOfferComparison';
 import type { Route } from 'next';
 import Link from 'next/link';
 import { PackagePlus } from 'lucide-react';
@@ -10,6 +13,35 @@ import {
 } from '@/components/common/featureDashboard';
 import { Button } from '@/components/ui/button';
 import { stationChecklist, stationPartsRecords } from '@/lib/sampleWorkflows';
+
+const requestedItems = [
+  { id: 'request-item-1', quantity: '2', unitCode: 'each' },
+];
+
+const sampleOffers: SupplierComparisonOffer[] = [
+  {
+    id: 'offer-1',
+    supplierName: 'Sample Supplier A',
+    currencyCode: 'ZAR',
+    payableTotal: '1250.00',
+    taxAmount: '150.00',
+    taxTreatment: 'included',
+    deliveryFee: '50.00',
+    eta: '2026-11-10T09:00:00.000Z',
+    items: [
+      {
+        requestItemId: 'request-item-1',
+        quantityAvailable: '2',
+        unitCode: 'each',
+        availability: 'available',
+        isAlternate: false,
+        fitmentVerified: true,
+      },
+    ],
+  },
+];
+
+const comparison = compareSupplierOffers(requestedItems, sampleOffers);
 
 export default function StationPartsPage() {
   return (
@@ -46,6 +78,7 @@ export default function StationPartsPage() {
         items={stationChecklist}
         title="Parts implementation checklist"
       />
+      <SupplierOfferComparison offers={comparison} />
     </AppShell>
   );
 }
