@@ -4,6 +4,7 @@ import type {
   EligibleStaffMember,
   JobCardRecord,
   JobWork,
+  ServiceRequestRecord,
   StaffJobNote,
   StaffLabourEntry,
   WorkVisibility,
@@ -153,6 +154,13 @@ export async function fetchJobCards() {
   return requestJson<{ jobCards: JobCardRecord[] }>(`/api/job-cards`, {
     errorMessage: 'Failed to fetch job cards.',
   });
+}
+
+export async function fetchServiceRequests() {
+  return requestJson<{ serviceRequests: ServiceRequestRecord[] }>(
+    '/api/service-requests',
+    { errorMessage: 'Failed to fetch service requests.' },
+  );
 }
 
 export async function fetchEligibleStaff() {
