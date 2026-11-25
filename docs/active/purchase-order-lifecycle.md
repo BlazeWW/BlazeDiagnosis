@@ -77,10 +77,7 @@ Both reads require a station actor (`site_manager` or `floor_manager`) in that t
 
 `users`, `tenant_members`, and `suppliers` do not record which supplier company a `parts_supplier` account belongs to. The service cannot limit that account to its own orders.
 
-Until a user → supplier link exists:
-
-- `listPurchaseOrders` and `getPurchaseOrder` reject supplier accounts. A supplier read would return every order in the tenant, including a competitor's.
-- `changePurchaseOrderStatus` still matches only the session tenant id and the order id. A `parts_supplier` user who knows an order id can change another supplier's order, including marking it delivered.
+Until a user → supplier link exists, `listPurchaseOrders`, `getPurchaseOrder`, and `changePurchaseOrderStatus` reject `parts_supplier` accounts before they read or update an order. A supplier call would otherwise expose every order in the tenant or mark a competitor's order delivered. Supplier rows in the transition matrix stay the intended rules for when that link exists.
 
 ## Verification
 
@@ -88,4 +85,4 @@ Until a user → supplier link exists:
 pnpm --filter @blaze-diagnostics/web exec vitest run src/features/parts/services/purchaseOrderLifecycle.test.ts src/features/parts/services/purchaseOrderService.test.ts src/features/parts/services/request.test.ts src/app/api/parts-orders
 ```
 
-The service tests cover an invalid transition, a duplicate update, partial fulfillment, and a station/supplier action performed by the other role. Each of those leaves the in-memory order status untouched and writes no audit row. Supplier list and get are rejected before a query.
+The service tests cover an invalid transition, a duplicate update, and a station dispatch attempted by the wrong role. Each of those leaves the in-memory order status untouched and writes no audit row. Supplier list, get, and status changes are rejected before a query or update. Partial fulfillment quantity rules are covered in the lifecycle tests.

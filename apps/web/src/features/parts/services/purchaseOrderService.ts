@@ -171,7 +171,7 @@ export async function createPurchaseOrder(tenantId: string, supplierResponseId: 
 
 export async function listPurchaseOrders(tenantId: string, filter?: { jobCardId?: string },) {
   const actor = await requireActor(tenantId);
-  rejectSupplierOrderRead(actor);
+  rejectSupplierOrderAccess(actor);
 
   const filters = [eq(partsOrders.tenantId, tenantId)];
 
@@ -188,7 +188,7 @@ export async function listPurchaseOrders(tenantId: string, filter?: { jobCardId?
 
 export async function getPurchaseOrder(tenantId: string, orderId: string) {
   const actor = await requireActor(tenantId);
-  rejectSupplierOrderRead(actor);
+  rejectSupplierOrderAccess(actor);
 
   const [order] = await db
     .select()
@@ -255,6 +255,7 @@ export async function changePurchaseOrderStatus(
   input: PurchaseOrderTransitionInput,
 ) {
   const actor = await requireActor(tenantId);
+  rejectSupplierOrderAccess(actor);
 
   return db.transaction(async (tx) => {
     const [order] = await tx
@@ -378,15 +379,14 @@ async function requireActor(tenantId: string): Promise<Actor> {
   };
 }
 
-function rejectSupplierOrderRead(actor: Actor) {
+function rejectSupplierOrderAccess(actor: Actor) {
   if (actor.actor !== 'supplier') {
     return;
   }
 
-  // suppliers and users are not linked, so a supplier read cannot be limited
-  // to that supplier's orders. Refuse the read instead of returning the tenant.
+  // No user → supplier link, so a supplier account cannot be limited to its own orders.
   throw new PurchaseOrderError(
-    'Supplier accounts cannot list or read purchase orders until a user is linked to a supplier.',
+    'Supplier accounts cannot access purchase orders until a user is linked to a supplier.',
     'FORBIDDEN',
   );
 }

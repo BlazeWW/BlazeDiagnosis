@@ -361,51 +361,21 @@ describe('purchaseOrderService', () => {
     });
   });
 
-  it('records partial fulfillment and rejects the same quantities again', async () => {
+  it('rejects a supplier status change without updating the order', async () => {
     useRole('parts_supplier');
-    harness.selects.push([orderRow('dispatched')], [responseRow], []);
-    harness.updateRows.push([orderRow('partially_delivered')]);
-
-    const partial = await changePurchaseOrderStatus('tenant-1', 'order-1', {
-      quantityOrdered: 4,
-      quantityReceived: 2,
-      status: 'partially_delivered',
-    });
-
-    expect(partial.status).toBe('partially_delivered');
-    expect(harness.inserts[0]).toMatchObject({
-      action: 'parts_order.partially_fulfilled',
-      newValue: expect.objectContaining({
-        fulfillment: { quantityOrdered: 4, quantityReceived: 2 },
-      }),
-    });
-
-    harness.inserts.length = 0;
-    harness.updates.length = 0;
-    harness.selects.push(
-      [orderRow('partially_delivered')],
-      [responseRow],
-      [
-        {
-          entityId: 'order-1',
-          entityType: 'parts_order',
-          newValue: {
-            fulfillment: { quantityOrdered: 4, quantityReceived: 2 },
-          },
-          tenantId: 'tenant-1',
-        },
-      ],
-    );
+    const stored = orderRow('dispatched');
+    harness.selects.push([stored], [responseRow]);
 
     await expect(
       changePurchaseOrderStatus('tenant-1', 'order-1', {
-        quantityOrdered: 4,
-        quantityReceived: 2,
-        status: 'partially_delivered',
+        status: 'delivered',
       }),
-    ).rejects.toMatchObject({ code: 'CONFLICT' });
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+    expect(stored.status).toBe('dispatched');
     expect(harness.updates).toEqual([]);
     expect(harness.inserts).toEqual([]);
+    expect(dbMock.transaction).not.toHaveBeenCalled();
   });
 
   it('cancels from pending approval and records the previous status', async () => {
