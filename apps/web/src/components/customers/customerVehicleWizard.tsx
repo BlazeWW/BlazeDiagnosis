@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { createCustomerVehicleIntake } from '@/lib/apiClient';
-import { lookupVehicleByVin } from '@/lib/providers/vehicle/registry';  
+  
 import type {
   CustomerVehicleIntake,
   CustomerWizardCustomer,
@@ -96,7 +96,7 @@ export function CustomerVehicleWizard() {
 
   const updateVehicle = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = event.currentTarget;
-    setVehicle((current) => ({ ...current, [name]: value }));
+    setVehicle((current) => ({ ...current, [name]: name === 'vin' ? value.toUpperCase() : value, }));
   };
 
   const canContinueFromCustomer = Boolean(customer.firstName && customer.lastName && (customer.email || customer.phone));
@@ -115,7 +115,14 @@ export function CustomerVehicleWizard() {
     setLookupSuccess(null);
 
     try {
-      const result = await lookupVehicleByVin(vehicle.vin);
+      const response = await fetch(
+         `/api/vehicles/lookup?vin=${encodeURIComponent(vehicle.vin)}`
+      );
+
+      const payload = await response.json();
+
+      const result = payload.data;
+    
 
       if(result.success && result.data) {
         const vehicleData = result.data;
@@ -133,7 +140,7 @@ export function CustomerVehicleWizard() {
           `Vehicle details loaded successfully from ${result.source}.`
         );
 
-        console.log(result);
+        
       } else {
         setLookupError(`Failed to retrieve vehicle details for VIN ${vehicle.vin}.`);
       }
