@@ -7,6 +7,7 @@ import {
   apiError,
   apiOk,
   apiValidationError,
+  handleApiError,
   handleMissingSearchParam,
   requireSearchParam,
 } from './response';
@@ -47,8 +48,24 @@ describe('API response helpers', () => {
     });
   });
 
+  it('maps unauthenticated and unauthorized requests to the correct status', async () => {
+    const unauthenticated = handleApiError(
+      'GET /api/resource',
+      new Error('Authentication required.'),
+    );
+    const unauthorized = handleApiError(
+      'POST /api/resource',
+      new Error('Missing permission: jobs.read'),
+    );
+
+    expect(unauthenticated.status).toBe(401);
+    expect(unauthorized.status).toBe(403);
+  });
+
   it('turns zod errors into validation responses', async () => {
-    const result = z.object({ name: z.string().min(1) }).safeParse({ name: '' });
+    const result = z
+      .object({ name: z.string().min(1) })
+      .safeParse({ name: '' });
     if (result.success) {
       throw new Error('Expected validation to fail.');
     }
@@ -62,10 +79,16 @@ describe('API response helpers', () => {
   });
 
   it('requires mandatory search params', async () => {
-    expect(requireSearchParam(new URLSearchParams('customerId=abc'), 'customerId')).toBe('abc');
-    expect(() => requireSearchParam(new URLSearchParams(), 'customerId')).toThrow(MissingSearchParamError);
+    expect(
+      requireSearchParam(new URLSearchParams('customerId=abc'), 'customerId'),
+    ).toBe('abc');
+    expect(() =>
+      requireSearchParam(new URLSearchParams(), 'customerId'),
+    ).toThrow(MissingSearchParamError);
 
-    const response = handleMissingSearchParam(new MissingSearchParamError('customerId'));
+    const response = handleMissingSearchParam(
+      new MissingSearchParamError('customerId'),
+    );
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({
       error: { code: 'BAD_REQUEST', details: { param: 'customerId' } },

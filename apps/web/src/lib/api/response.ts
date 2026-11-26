@@ -42,7 +42,12 @@ export function apiError(
 }
 
 export function apiValidationError(error: ZodError) {
-  return apiError('VALIDATION_ERROR', 'Validation failed.', 422, error.flatten());
+  return apiError(
+    'VALIDATION_ERROR',
+    'Validation failed.',
+    422,
+    error.flatten(),
+  );
 }
 
 export function getErrorMessage(error: unknown) {
@@ -70,6 +75,18 @@ export function handleApiError(route: string, error: unknown) {
 
   if (error instanceof ZodError) {
     return apiValidationError(error);
+  }
+
+  if (error instanceof Error && error.message === 'Authentication required.') {
+    return apiError('UNAUTHORIZED', 'Authentication required.', 401);
+  }
+
+  if (
+    error instanceof Error &&
+    (error.message.startsWith('Missing permission:') ||
+      error.message.startsWith('Missing one of permissions:'))
+  ) {
+    return apiError('FORBIDDEN', 'Forbidden.', 403);
   }
 
   if (isTenantAccessError(error)) {
