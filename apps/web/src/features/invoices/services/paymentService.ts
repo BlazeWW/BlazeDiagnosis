@@ -1,5 +1,4 @@
-import { and, eq } from 'drizzle-orm';
-
+import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { invoices, payments } from '@/db/schema';
 import { requireTenantPermission } from '@/lib/authorization/guards';
@@ -35,60 +34,84 @@ export async function markInvoicePaid(
   if (amount <= 0) {
     throw new Error('Payment amount must be greater than zero');
   }
+  await requireTenantPermission(tenantId, 'invoices.update');
+    const paidAt = new Date();
+    const amountValue = amount.toString();
+    
+    const result = await db.transaction(async (tx) => {
+    const [invoice] = await tx
+      .select({
+        id: invoices.id,
+        total: invoices.total,
+      })
+      .from(invoices)
+      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)));
 
-  await requireTenantPermission(tenantId, 'invoices.create');
+    if (!invoice) {
+      throw new Error('Invoice not found');
+    }
 
-  const [invoice] = await db
-    .select()
-    .from(invoices)
-    .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)));
+    const invoiceTotal = Number(invoice.total);
+    const nextAmountSql = sql<string>`${invoices.amountPaid} + ${amountValue}`;
 
-  if (!invoice) {
-    throw new Error('Invoice not found');
-  }
+    const [updatedInvoice] = await tx
+      .update(invoices)
+      .set({
+        amountPaid: nextAmountSql,
+      })
+      .where(
+        and(
+          eq(invoices.id, invoiceId),
+          eq(invoices.tenantId, tenantId),
+          lte(nextAmountSql, invoices.total),
+        ),
+      )
+      .returning({
+        amountPaid: invoices.amountPaid,
+      });
 
-  const currentAmountPaid = Number(invoice.amountPaid);
-  const invoiceTotal = Number(invoice.total);
+    if (!updatedInvoice) {
+      throw new Error('Payment exceeds outstanding balance');
+    }
 
-  if (currentAmountPaid + amount > invoiceTotal) {
-    throw new Error('Payment exceeds outstanding balance');
-  }
+    const newAmountPaid = Number(updatedInvoice.amountPaid);
+    const newStatus = getInvoicePaymentStatus(invoiceTotal, newAmountPaid);
 
-  const paidAt = new Date();
+    await tx
+      .update(invoices)
+      .set({
+        status: newStatus,
+        paidAt: newStatus === 'paid' ? paidAt : null,
+      })
+      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)));
 
-  await db.insert(payments).values({
-    tenantId,
-    invoiceId,
-    amount: amount.toString(),
-    method: 'manual',
-    status: 'completed',
-    paidAt,
+    await tx.insert(payments).values({
+      tenantId,
+      invoiceId,
+      amount: amountValue,
+      method: 'manual',
+      status: 'completed',
+      paidAt,
+    });
+
+    return {
+      newAmountPaid,
+      newStatus,
+    };
   });
-
-  const newAmountPaid = currentAmountPaid + amount;
-  const newStatus = getInvoicePaymentStatus(invoiceTotal, newAmountPaid);
-
-  await db
-    .update(invoices)
-    .set({
-      amountPaid: newAmountPaid.toString(),
-      status: newStatus,
-      paidAt: newStatus === 'paid' ? paidAt : null,
-    })
-    .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)));
 
   await writeAudit.writeAudit({
     userId: tenantId,
     action: 'UPDATE',
     resource: 'INVOICE',
     resourceId: invoiceId,
-    description: `Recorded manual payment of ${amount} on invoice ${invoiceId}. New paid total: ${newAmountPaid}, status: ${newStatus}`,
+    description: `Recorded manual payment of ${amount} on invoice ${invoiceId}. New paid total: ${result.newAmountPaid}, status: ${result.newStatus}`,
   });
 
   return {
     invoiceId,
-    amountPaid: newAmountPaid,
-    status: newStatus,
+    amountPaid: result.newAmountPaid,
+    status: result.newStatus,
   };
 }
 
@@ -103,55 +126,83 @@ export async function recordPaymentCorrection(
 
   await requireTenantPermission(tenantId, 'invoices.create');
 
-  const [invoice] = await db
-    .select()
-    .from(invoices)
-    .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)));
-
-  if (!invoice) {
-    throw new Error('Invoice not found');
-  }
-
-  const currentAmountPaid = Number(invoice.amountPaid);
-  const newAmountPaid = currentAmountPaid - amount;
-
-  if (newAmountPaid < 0) {
-    throw new Error('Correction amount cannot exceed amount paid');
-  }
-
   const paidAt = new Date();
+  const amountValue = amount.toString();
 
-  await db.insert(payments).values({
-    tenantId,
-    invoiceId,
-    amount: (-amount).toString(),
-    method: 'manual',
-    status: 'completed',
-    paidAt,
+  const result = await db.transaction(async (tx) => {
+    const [invoice] = await tx
+      .select({
+        id: invoices.id,
+        total: invoices.total,
+        paidAt: invoices.paidAt,
+      })
+      .from(invoices)
+      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)));
+
+    if (!invoice) {
+      throw new Error('Invoice not found');
+    }
+
+    const invoiceTotal = Number(invoice.total);
+    const nextAmountSql = sql<string>`${invoices.amountPaid} - ${amountValue}`;
+
+    const [updatedInvoice] = await tx
+      .update(invoices)
+      .set({
+        amountPaid: nextAmountSql,
+      })
+      .where(
+        and(
+          eq(invoices.id, invoiceId),
+          eq(invoices.tenantId, tenantId),
+          gte(nextAmountSql, 0),
+        ),
+      )
+      .returning({
+        amountPaid: invoices.amountPaid,
+      });
+
+    if (!updatedInvoice) {
+      throw new Error('Correction amount cannot exceed amount paid');
+    }
+
+    const newAmountPaid = Number(updatedInvoice.amountPaid);
+    const newStatus = getInvoicePaymentStatus(invoiceTotal, newAmountPaid);
+
+    await tx
+      .update(invoices)
+      .set({
+        status: newStatus,
+        paidAt: newStatus === 'paid' ? invoice.paidAt ?? paidAt : null,
+      })
+      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)));
+
+    await tx.insert(payments).values({
+      tenantId,
+      invoiceId,
+      amount: (-amount).toString(),
+      method: 'manual',
+      status: 'completed',
+      paidAt,
+    });
+
+    return {
+      newAmountPaid,
+      newStatus,
+    };
   });
-
-  const newStatus = getInvoicePaymentStatus(Number(invoice.total), newAmountPaid);
-
-  await db
-    .update(invoices)
-    .set({
-      amountPaid: newAmountPaid.toString(),
-      status: newStatus,
-      paidAt: newStatus === 'paid' ? invoice.paidAt ?? paidAt : null,
-    })
-    .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)));
 
   await writeAudit.writeAudit({
     userId: tenantId,
     action: 'UPDATE',
     resource: 'INVOICE',
     resourceId: invoiceId,
-    description: `Recorded payment correction of -${amount} on invoice ${invoiceId}. New paid total: ${newAmountPaid}, status: ${newStatus}`,
+    description: `Recorded payment correction of -${amount} on invoice ${invoiceId}. New paid total: ${result.newAmountPaid}, status: ${result.newStatus}`,
   });
 
   return {
     invoiceId,
-    amountPaid: newAmountPaid,
-    status: newStatus,
+    amountPaid: result.newAmountPaid,
+    status: result.newStatus,
   };
 }

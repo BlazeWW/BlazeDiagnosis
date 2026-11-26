@@ -4,6 +4,7 @@ const dbMock = vi.hoisted(() => ({
   select: vi.fn(),
   insert: vi.fn(),
   update: vi.fn(),
+  transaction: vi.fn(),
 }));
 
 const authGuardMock = vi.hoisted(() => ({
@@ -40,20 +41,25 @@ function mockSelectInvoice(invoiceRow: Record<string, unknown> | undefined) {
 function mockInsertAndUpdate() {
   const insertValues = vi.fn().mockResolvedValue(undefined);
   dbMock.insert.mockReturnValue({ values: insertValues });
+const updateReturning = vi.fn().mockResolvedValue([]);
+  const updateWhere = vi.fn(() =>
+    Object.assign(Promise.resolve(undefined), {
+      returning: updateReturning,
+    }),
+  );
+  const updatesSet = vi.fn(() => ({ where: updateWhere }));
+  dbMock.update.mockReturnValue({ set: updatesSet });
 
-  const updateWhere = vi.fn().mockResolvedValue(undefined);
-  const updateSet = vi.fn(() => ({ where: updateWhere }));
-  dbMock.update.mockReturnValue({ set: updateSet });
-
-  return { insertValues, updateSet, updateWhere };
+  return { insertValues, updatesSet, updateWhere, updateReturning };
 }
 
 describe('paymentService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    authGuardMock.requireTenantPermission.mockResolvedValue(undefined);
-    auditWriterMock.default.writeAudit.mockResolvedValue(undefined);
-  });
+    dbMock.transaction.mockImplementation(async (cb) => cb(dbMock));
+  authGuardMock.requireTenantPermission.mockResolvedValue(undefined);
+  auditWriterMock.default.writeAudit.mockResolvedValue(undefined);
+});
 
   it('calculates outstanding balance', () => {
     expect(calculateOutstandingBalance(5000, 1000)).toBe(4000);
@@ -103,8 +109,8 @@ describe('paymentService', () => {
       amountPaid: '0',
       paidAt: null,
     });
-    const { insertValues, updateSet } = mockInsertAndUpdate();
-
+    const { insertValues, updatesSet, updateReturning } = mockInsertAndUpdate();
+    updateReturning.mockResolvedValueOnce([{ amountPaid: '2000' }]);
     const result = await markInvoicePaid('tenant-1', 'invoice-1', 2000);
 
     expect(result).toEqual({
@@ -121,13 +127,13 @@ describe('paymentService', () => {
         status: 'completed',
       }),
     );
-    expect(updateSet).toHaveBeenCalledWith(
-      expect.objectContaining({
-        amountPaid: '2000',
-        status: 'partially_paid',
-        paidAt: null,
-      }),
-    );
+    expect(updatesSet).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+            status: 'partially_paid',
+            paidAt: null,
+  }),
+);
     expect(auditWriterMock.default.writeAudit).toHaveBeenCalledWith(
       expect.objectContaining({
         resource: 'INVOICE',
@@ -145,16 +151,15 @@ describe('paymentService', () => {
       amountPaid: '4000',
       paidAt: null,
     });
-    const { insertValues, updateSet } = mockInsertAndUpdate();
+    const { insertValues, updateReturning } = mockInsertAndUpdate();updateReturning.mockResolvedValueOnce([]);
 
-    await expect(
-      markInvoicePaid('tenant-1', 'invoice-1', 1500),
-    ).rejects.toThrow('Payment exceeds outstanding balance');
+await expect(
+  markInvoicePaid('tenant-1', 'invoice-1', 1500),
+).rejects.toThrow('Payment exceeds outstanding balance');
 
-    expect(insertValues).not.toHaveBeenCalled();
-    expect(updateSet).not.toHaveBeenCalled();
+expect(insertValues).not.toHaveBeenCalled();
+expect(updateReturning).toHaveBeenCalledTimes(1);
   });
-
   it('records a payment correction and updates balance and status', async () => {
     mockSelectInvoice({
       id: 'invoice-1',
@@ -163,8 +168,8 @@ describe('paymentService', () => {
       amountPaid: '5000',
       paidAt: new Date('2026-11-20T00:00:00.000Z'),
     });
-    const { insertValues, updateSet } = mockInsertAndUpdate();
-
+    const { insertValues, updatesSet, updateReturning } = mockInsertAndUpdate();
+    updateReturning.mockResolvedValueOnce([{ amountPaid: '2000' }]);
     const result = await recordPaymentCorrection('tenant-1', 'invoice-1', 3000);
 
     expect(result).toEqual({
@@ -181,13 +186,13 @@ describe('paymentService', () => {
         status: 'completed',
       }),
     );
-    expect(updateSet).toHaveBeenCalledWith(
-      expect.objectContaining({
-        amountPaid: '2000',
-        status: 'partially_paid',
-        paidAt: null,
-      }),
-    );
+     expect(updatesSet).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+            status: 'partially_paid',
+             paidAt: null,
+            }),
+        );
     expect(auditWriterMock.default.writeAudit).toHaveBeenCalledWith(
       expect.objectContaining({
         resource: 'INVOICE',
@@ -205,27 +210,27 @@ describe('paymentService', () => {
       amountPaid: '1000',
       paidAt: null,
     });
-    const { insertValues, updateSet } = mockInsertAndUpdate();
+    const { insertValues, updateReturning } = mockInsertAndUpdate();
+    updateReturning.mockResolvedValueOnce([]);
 
     await expect(
-      recordPaymentCorrection('tenant-1', 'invoice-1', 1500),
+        recordPaymentCorrection('tenant-1', 'invoice-1', 1500),
     ).rejects.toThrow('Correction amount cannot exceed amount paid');
 
     expect(insertValues).not.toHaveBeenCalled();
-    expect(updateSet).not.toHaveBeenCalled();
+    expect(updateReturning).toHaveBeenCalledTimes(1);
   });
 
   it('prevents unauthorized cross-tenant payment from altering an invoice', async () => {
     authGuardMock.requireTenantPermission.mockRejectedValueOnce(
       new Error('Forbidden'),
     );
-    const { insertValues, updateSet } = mockInsertAndUpdate();
-
-    await expect(
-      markInvoicePaid('tenant-2', 'invoice-1', 1000),
+     const { insertValues, updateReturning } = mockInsertAndUpdate();
+     await expect(
+        markInvoicePaid('tenant-2', 'invoice-1', 1000),
     ).rejects.toThrow('Forbidden');
-
+    
     expect(insertValues).not.toHaveBeenCalled();
-    expect(updateSet).not.toHaveBeenCalled();
-  });
+  expect(updateReturning).not.toHaveBeenCalled();
+});
 });
