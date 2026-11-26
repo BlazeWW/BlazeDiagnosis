@@ -144,6 +144,14 @@ describe('/api/supplier-responses', () => {
     const responseValues = vi.fn(() => ({ returning }));
     const itemValues = vi.fn(() => Promise.resolve());
 
+    dbMock.select.mockReturnValueOnce({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          limit: vi.fn(() => Promise.resolve([{ id: uuid }])),
+        })),
+      })),
+    });
+
     dbMock.insert
       .mockReturnValueOnce({ values: responseValues })
       .mockReturnValueOnce({ values: itemValues });
@@ -216,4 +224,62 @@ describe('/api/supplier-responses', () => {
       success: false,
     });
   });
+
+  it('rejects POST when supplierId is not linked to the caller tenant', async () => {
+    queueSelects([[]]);
+
+    const response = await POST(
+      jsonRequest('http://localhost/api/supplier-responses', {
+        items: [
+          {
+            partId: uuid,
+            partName: 'Brake pads',
+            quantityAvailable: 4,
+            unitPrice: 950,
+          },
+        ],
+        partsRequestId: uuid,
+        subtotal: 950,
+        supplierId: uuid,
+        tax: 142.5,
+        total: 1092.5,
+      }),
+    );
+
+    expect(response.status).toBe(403);
+    expect(dbMock.insert).not.toHaveBeenCalled();
+  });
+
+  it('allows POST when supplierId is linked to the caller tenant', async () => {
+    queueSelects([[{ id: uuid }]]);
+
+    const returning = vi.fn(() => Promise.resolve([{ id: 'response-1' }]));
+    const responseValues = vi.fn(() => ({ returning }));
+    const itemValues = vi.fn(() => Promise.resolve());
+
+    dbMock.insert
+      .mockReturnValueOnce({ values: responseValues })
+      .mockReturnValueOnce({ values: itemValues });
+
+    const response = await POST(
+      jsonRequest('http://localhost/api/supplier-responses', {
+        items: [
+          {
+            partId: uuid,
+            partName: 'Brake pads',
+            quantityAvailable: 4,
+            unitPrice: 950,
+          },
+        ],
+        partsRequestId: uuid,
+        subtotal: 950,
+        supplierId: uuid,
+        tax: 142.5,
+        total: 1092.5,
+      }),
+    );
+
+    expect(response.status).toBe(201);
+  });
+  
 });
