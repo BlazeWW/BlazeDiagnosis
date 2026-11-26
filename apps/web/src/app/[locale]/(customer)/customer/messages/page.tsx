@@ -1,9 +1,11 @@
+
 import { AppShell } from '@/components/common/appShell';
 import {
   FeatureChecklist,
   FeatureMetricGrid,
   FeatureRecordList,
 } from '@/components/common/featureDashboard';
+import { NotificationPreferences } from '@/features/notifications/components/notificationPreferences';
 import { customerChecklist, customerMessageRecords } from '@/lib/sampleWorkflows';
 
 export default function CustomerMessagesPage() {
@@ -22,6 +24,8 @@ export default function CustomerMessagesPage() {
         ]}
       />
 
+      <NotificationPreferences />
+
       <FeatureRecordList
         description="Message threads are grouped by service job so customers do not need to understand internal ticket numbers."
         items={customerMessageRecords}
@@ -29,7 +33,7 @@ export default function CustomerMessagesPage() {
       />
 
       <FeatureChecklist
-        description="Future production work should add attachments, read receipts, and notification preferences."
+        description="Future production work should add attachments and read receipts."
         items={customerChecklist}
         title="Messaging checklist"
       />
