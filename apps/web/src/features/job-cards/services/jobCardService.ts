@@ -104,8 +104,16 @@ export async function convertServiceRequestToJobCard(
 export async function getWorkshopBoard(tenantId: string) {
   await requireTenantPermission(tenantId, 'jobs.read');
 
+  // Only the JobCardRecord fields the board screens use: SELECT * sent ~11.8 MB for 20k job cards (BD-067).
+  // shortcut: still returns every job card; add a limit/paging (with server-side counts) once workshops reach tens of thousands of jobs.
   return db
-    .select()
+    .select({
+      id: jobCards.id,
+      jobNumber: jobCards.jobNumber,
+      internalStatus: jobCards.internalStatus,
+      assignedMechanicId: jobCards.assignedMechanicId,
+      assignedFloorManagerId: jobCards.assignedFloorManagerId,
+    })
     .from(jobCards)
     .where(eq(jobCards.tenantId, tenantId))
     .orderBy(desc(jobCards.createdAt));
