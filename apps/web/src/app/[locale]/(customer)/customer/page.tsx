@@ -1,37 +1,77 @@
-import { Clock, FileCheck2, MessageSquare, ShieldCheck } from 'lucide-react';
+import type { Route } from 'next';
+import Link from 'next/link';
 
 import { AppShell } from '@/components/common/appShell';
-import { StatCard } from '@/components/common/statCard';
-import { CustomerForm, CustomerList } from '@/components/customers';
-import { PageSection } from '@/components/layout/pageSection';
-import { ContextualHelp, ContextualHint } from '@/components/onboarding/contextualHelp';
+import { EmptyState } from '@/components/data-display/emptyState';
+import { ErrorState } from '@/components/data-display/errorState';
+import { ContextualHelp } from '@/components/onboarding/contextualHelp';
+import { Button } from '@/components/ui/button';
+import { CustomerDashboardCards } from '@/features/customers/components/customerDashboardCards';
+import { getCustomerDashboard } from '@/features/customers/services/customerDashboardService';
+import { CustomerProfileNotFoundError } from '@/features/customers/services/serviceHistoryService';
+import { TenantAccessError } from '@/lib/authorization/guards';
 
-export default function CustomerDashboardPage() {
+export const dynamic = 'force-dynamic';
+
+async function loadDashboard() {
+  try {
+    return { dashboard: await getCustomerDashboard(), problem: null };
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Authentication required.') {
+      return { dashboard: null, problem: 'signed_out' as const };
+    }
+
+    if (
+      error instanceof CustomerProfileNotFoundError ||
+      error instanceof TenantAccessError
+    ) {
+      return { dashboard: null, problem: 'not_linked' as const };
+    }
+
+    console.error('Customer dashboard failed to load', error);
+    return { dashboard: null, problem: 'failed' as const };
+  }
+}
+
+export default async function CustomerDashboardPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const { dashboard, problem } = await loadDashboard();
+
   return (
     <AppShell
-      description="A customer-first view for active service work, quote approvals, invoices, and vehicle records."
+      description="Your vehicles, open quotes, invoices and pending requests."
       surface="customer"
       title="Customer dashboard"
     >
       <ContextualHelp surface="customer" />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard description="Currently checked in" icon={<Clock className="size-4" />} label="Active services" value="1" />
-        <StatCard description="Needs customer action" icon={<FileCheck2 className="size-4" />} label="Quotes awaiting approval" value="1" />
-        <StatCard description="No overdue balance" icon={<ShieldCheck className="size-4" />} label="Open invoices" value="0" />
-        <StatCard description="Linked to profile" icon={<MessageSquare className="size-4" />} label="Messages" value="2" />
-      </div>
-
-      <PageSection
-        description="These demo panels remain client-side until the customer server actions are connected."
-        title="Customer workspace"
-      >
-        <ContextualHint>Use the customer form to capture contact details. The directory helps you find existing customer records without leaving this workspace.</ContextualHint>
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-          <CustomerForm />
-          <CustomerList />
-        </div>
-      </PageSection>
+      {dashboard ? (
+        <CustomerDashboardCards
+          basePath={`/${locale}/customer`}
+          dashboard={dashboard}
+        />
+      ) : problem === 'signed_out' ? (
+        <EmptyState
+          action={
+            <Button asChild size="sm">
+              <Link href={`/${locale}/login` as Route}>Sign in</Link>
+            </Button>
+          }
+          description="Sign in to see your vehicles, quotes and invoices."
+          title="Please sign in"
+        />
+      ) : problem === 'not_linked' ? (
+        <EmptyState
+          description="Your account is not linked to a customer profile yet. Ask the workshop to link it so your records can be shown."
+          title="No customer profile linked"
+        />
+      ) : (
+        <ErrorState message="We couldn't load your dashboard. Please refresh the page or try again shortly." />
+      )}
     </AppShell>
   );
 }
