@@ -3,12 +3,14 @@
 import { CheckCircle2, ChevronLeft, ChevronRight, UserRound, Wrench } from 'lucide-react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { useMemo, useState } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 
 import { FormActions, FormField } from '@/components/forms';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { createCustomerVehicleIntake } from '@/lib/apiClient';
+  
 import type {
   CustomerVehicleIntake,
   CustomerWizardCustomer,
@@ -60,12 +62,18 @@ const steps: { description: string; key: CustomerWizardStep; title: string }[] =
 ];
 
 export function CustomerVehicleWizard() {
+  const router = useRouter();
+  const params = useParams();
+  const locale = (params?.locale as string) || 'en';
   const [stepIndex, setStepIndex] = useState(0);
   const [customer, setCustomer] = useState<CustomerWizardCustomer>(customerInitialState);
   const [vehicle, setVehicle] = useState<CustomerWizardVehicle>(vehicleInitialState);
   const [savedIntake, setSavedIntake] = useState<CustomerVehicleIntake | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [lookupSuccess, setLookupSuccess] = useState<string | null>(null);
   const activeStep = steps[stepIndex];
 
   const completionScore = useMemo(() => {
@@ -88,7 +96,7 @@ export function CustomerVehicleWizard() {
 
   const updateVehicle = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = event.currentTarget;
-    setVehicle((current) => ({ ...current, [name]: value }));
+    setVehicle((current) => ({ ...current, [name]: name === 'vin' ? value.toUpperCase() : value, }));
   };
 
   const canContinueFromCustomer = Boolean(customer.firstName && customer.lastName && (customer.email || customer.phone));
@@ -96,12 +104,60 @@ export function CustomerVehicleWizard() {
 
   const next = () => setStepIndex((current) => Math.min(current + 1, steps.length - 1));
   const back = () => setStepIndex((current) => Math.max(current - 1, 0));
+  const handleVinLookup = async () => {
+    if (vehicle.vin.length !== 17) {
+      setLookupError('VIN must be exactly 17 characters.');
+      return;
+    }
+
+    setLookupLoading(true);
+    setLookupError(null);
+    setLookupSuccess(null);
+
+    try {
+      const response = await fetch(
+         `/api/vehicles/lookup?vin=${encodeURIComponent(vehicle.vin)}`
+      );
+
+      const payload = await response.json();
+
+      const result = payload.data;
+    
+
+      if(result.success && result.data) {
+        const vehicleData = result.data;
+
+        setVehicle((current) => ({
+          ...current,
+          make: vehicleData.make,
+          model: vehicleData.model,
+          year: String(vehicleData.year),
+          
+        }));
+
+
+        setLookupSuccess(
+          `Vehicle details loaded successfully from ${result.source}.`
+        );
+
+        
+      } else {
+        setLookupError(`Failed to retrieve vehicle details for VIN ${vehicle.vin}.`);
+      }
+      } catch (error) {
+      setLookupError(error instanceof Error ? error.message : 'An unexpected error occurred during VIN lookup.');
+    
+    } finally {
+      setLookupLoading(false);
+    }
+    };
+
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSubmitting(true);
     setStatusMessage(null);
-
+    
     const intake: CustomerVehicleIntake = {
       createdAt: new Date().toISOString(),
       customer,
@@ -114,8 +170,14 @@ export function CustomerVehicleWizard() {
       await createCustomerVehicleIntake({ customer, vehicle });
       setSavedIntake({ ...intake, status: 'ready_for_review' });
       setStatusMessage('Customer and vehicle intake created successfully.');
+
+      setTimeout(() => {
+        router.push(`/${locale}/station/job-cards`);
+      }, 1500);
+
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : 'Failed to create customer and vehicle intake.');
+
     } finally {
       setIsSubmitting(false);
     }
@@ -195,7 +257,14 @@ export function CustomerVehicleWizard() {
             ) : null}
 
             {activeStep.key === 'vehicle' ? (
-              <VehicleStep vehicle={vehicle} onChange={updateVehicle} />
+              <VehicleStep
+                vehicle={vehicle}
+                onChange={updateVehicle}
+                onLookup={handleVinLookup}
+                lookupLoading={lookupLoading}
+                lookupError={lookupError}
+                lookupSuccess={lookupSuccess}
+              />
             ) : null}
 
             {activeStep.key === 'review' ? (
@@ -307,9 +376,17 @@ function CustomerStep({
 function VehicleStep({
   onChange,
   vehicle,
+  onLookup,
+  lookupLoading,
+  lookupError,
+  lookupSuccess,
 }: {
   onChange: (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
   vehicle: CustomerWizardVehicle;
+  onLookup: () => Promise<void>;
+  lookupLoading: boolean;
+  lookupError: string | null;
+  lookupSuccess: string | null;
 }) {
   return (
     <div className="grid gap-4">
@@ -318,7 +395,34 @@ function VehicleStep({
           <Input id="registrationNumber" name="registrationNumber" onChange={onChange} required value={vehicle.registrationNumber} />
         </FormField>
         <FormField id="vin" label="VIN">
-          <Input id="vin" name="vin" onChange={onChange} value={vehicle.vin} />
+          <Input id="vin" name="vin" maxLength={17} onChange={onChange} value={vehicle.vin} placeholder="17-character VIN" />
+          <Button
+          type="button"
+          onClick={onLookup}
+          disabled={vehicle.vin.length !== 17 || lookupLoading}
+
+
+          >
+            {lookupLoading ? 'Looking up...' : 'Lookup VIN'}
+          </Button>
+          
+          {vehicle.vin.length > 0 && vehicle.vin.length !== 17 && (
+            <p className="text-sm text-destructive">
+              VIN must be exactly 17 characters ({vehicle.vin.length} provided).
+            </p>
+          )}
+
+            {lookupError &&(
+              <p className="text-sm text-destructive">
+                {lookupError}
+              </p>
+            )}
+
+            {lookupSuccess &&(
+              <p className="text-sm text-success">
+                {lookupSuccess}
+              </p>
+            )}
         </FormField>
         <FormField id="mileage" label="Mileage / odometer">
           <Input id="mileage" inputMode="numeric" name="mileage" onChange={onChange} value={vehicle.mileage} />
@@ -338,6 +442,8 @@ function VehicleStep({
         <FormField id="engineDetails" label="Engine details">
           <Input id="engineDetails" name="engineDetails" onChange={onChange} value={vehicle.engineDetails} />
         </FormField>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <FormField id="fuelType" label="Fuel type">
           <select
             className="h-10 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-shadow"

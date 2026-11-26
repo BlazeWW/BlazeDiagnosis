@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import type { DashboardLink } from '@/types/navigation';
 
 const dashboardLinks: DashboardLink[] = [
+  
   {
     description: 'Customer vehicles, service status, approvals, invoices, and messages.',
     href: '/en/customer' as Route,

@@ -11,11 +11,14 @@ describe('createVehicleSchema', () => {
         make: 'Toyota',
         model: 'Corolla',
         primaryCustomerId: validCustomerId,
+        vin: 'WBADT43452G915206',
       }),
     ).toMatchObject({
       make: 'Toyota',
       model: 'Corolla',
       primaryCustomerId: validCustomerId,
+      vin: 'WBADT43452G915206',
+
     });
   });
 
@@ -32,6 +35,7 @@ describe('createVehicleSchema', () => {
         model: 'Corolla',
         primaryCustomerId: 'not-a-uuid',
         year: 1800,
+        vin : '1234'
       }),
     ).toThrow();
   });
