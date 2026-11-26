@@ -1,10 +1,21 @@
+
 'use client';
 
 import type { Route } from 'next';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useEffect, useState, type ReactNode } from 'react';
-import { BookOpen, CheckCircle2, CircleHelp, X } from 'lucide-react';
+import {
+  useCallback,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react';
+import {
+  BookOpen,
+  CheckCircle2,
+  CircleHelp,
+  X,
+} from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -15,11 +26,18 @@ import {
   type OnboardingSurface,
 } from './onboardingPreferences';
 
+const PREFERENCE_CHANGE_EVENT = 'onboarding-preference-change';
+
 const guideContent: Record<
   OnboardingSurface,
   {
     description: string;
-    steps: { title: string; description: string; href: string; action: string }[];
+    steps: {
+      title: string;
+      description: string;
+      href: string;
+      action: string;
+    }[];
     hint: string;
   }
 > = {
@@ -102,36 +120,72 @@ export function ContextualHint({
         aria-hidden="true"
         className="mt-0.5 size-4 shrink-0 text-primary"
       />
-      <div className="min-w-0 leading-6 text-muted-foreground">{children}</div>
+      <div className="min-w-0 leading-6 text-muted-foreground">
+        {children}
+      </div>
     </aside>
   );
 }
 
-export function ContextualHelp({ surface }: { surface: OnboardingSurface }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [hasCheckedPreference, setHasCheckedPreference] = useState(false);
+export function ContextualHelp({
+  surface,
+}: {
+  surface: OnboardingSurface;
+}) {
   const params = useParams<{ locale?: string }>();
   const locale = params.locale ?? 'en';
   const content = guideContent[surface];
 
-  useEffect(() => {
-    const dismissed = hasDismissedOnboarding(window.localStorage, surface);
-    setIsOpen(!dismissed);
-    setHasCheckedPreference(true);
-  }, [surface]);
+  const subscribe = useCallback((callback: () => void) => {
+    window.addEventListener('storage', callback);
+    window.addEventListener(PREFERENCE_CHANGE_EVENT, callback);
+
+    return () => {
+      window.removeEventListener('storage', callback);
+      window.removeEventListener(PREFERENCE_CHANGE_EVENT, callback);
+    };
+  }, []);
+
+  const getSnapshot = useCallback(
+    () => hasDismissedOnboarding(window.localStorage, surface),
+    [surface],
+  );
+
+  const getServerSnapshot = useCallback(() => false, []);
+
+  const isDismissed = useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    getServerSnapshot,
+  );
+
+  const [openOverride, setOpenOverride] = useState<{
+    surface: OnboardingSurface;
+    isOpen: boolean;
+  } | null>(null);
+
+  const isOpen =
+    openOverride?.surface === surface
+      ? openOverride.isOpen
+      : !isDismissed;
 
   const dismissGuide = () => {
     setOnboardingDismissed(window.localStorage, surface, true);
-    setIsOpen(false);
+
+    window.dispatchEvent(new Event(PREFERENCE_CHANGE_EVENT));
+
+    setOpenOverride({
+      surface,
+      isOpen: false,
+    });
   };
 
   const reopenGuide = () => {
-    setIsOpen(true);
+    setOpenOverride({
+      surface,
+      isOpen: true,
+    });
   };
-
-  if (!hasCheckedPreference) {
-    return null;
-  }
 
   if (!isOpen) {
     return (
@@ -162,6 +216,7 @@ export function ContextualHelp({ surface }: { surface: OnboardingSurface }) {
           <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <BookOpen aria-hidden="true" className="size-5" />
           </span>
+
           <div className="min-w-0 space-y-1">
             <h2
               className="text-lg font-semibold tracking-tight"
@@ -169,6 +224,7 @@ export function ContextualHelp({ surface }: { surface: OnboardingSurface }) {
             >
               Getting started
             </h2>
+
             <p
               className="text-sm leading-6 text-muted-foreground"
               id={`${surface}-onboarding-description`}
@@ -177,6 +233,7 @@ export function ContextualHelp({ surface }: { surface: OnboardingSurface }) {
             </p>
           </div>
         </div>
+
         <Button
           aria-label="Dismiss getting started guide"
           className="self-end sm:self-start"
@@ -200,24 +257,39 @@ export function ContextualHelp({ surface }: { surface: OnboardingSurface }) {
               <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold tabular-nums">
                 {index + 1}
               </span>
-              <h3 className="text-sm font-semibold">{step.title}</h3>
+
+              <h3 className="text-sm font-semibold">
+                {step.title}
+              </h3>
             </div>
+
             <p className="flex-1 text-sm leading-6 text-muted-foreground">
               {step.description}
             </p>
+
             <Button asChild size="sm" variant="outline">
-              <Link href={`/${locale}${step.href}` as Route}>{step.action}</Link>
+              <Link href={`/${locale}${step.href}` as Route}>
+                {step.action}
+              </Link>
             </Button>
           </li>
         ))}
       </ol>
 
       <p className="mt-4 flex items-start gap-2 text-xs leading-5 text-muted-foreground">
-        <CheckCircle2 aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+        <CheckCircle2
+          aria-hidden="true"
+          className="mt-0.5 size-4 shrink-0"
+        />
         {content.hint}
       </p>
+
       <div className="mt-4 flex justify-end">
-        <Button onClick={dismissGuide} size="sm" type="button">
+        <Button
+          onClick={dismissGuide}
+          size="sm"
+          type="button"
+        >
           <CheckCircle2 aria-hidden="true" className="size-4" />
           Got it
         </Button>
@@ -225,4 +297,3 @@ export function ContextualHelp({ surface }: { surface: OnboardingSurface }) {
     </section>
   );
 }
-
