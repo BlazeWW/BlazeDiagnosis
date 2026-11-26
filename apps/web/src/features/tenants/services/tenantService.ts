@@ -1,16 +1,23 @@
-import { and, eq } from 'drizzle-orm';
+import { and, count, eq } from 'drizzle-orm';
 
 import { db } from '@/db/client';
 import {
   tenantBranding,
   tenantFeatureFlags,
+  tenantMembers,
   tenantSettings,
   tenants,
 } from '@/db/schema';
+import { writeAuditLog } from '@/features/audit/services/auditService';
 import {
   requirePermission,
   requireTenantPermission,
 } from '@/lib/authorization/guards';
+
+import {
+  enforceTenantFeature,
+  enforceTenantLimit,
+} from './subscriptionService';
 
 export async function createTenant(input: {
   name: string;
@@ -113,6 +120,7 @@ export async function updateTenantBrandingConfig(
   },
 ) {
   await requireTenantPermission(tenantId, 'tenant.settings.update');
+  await enforceTenantFeature(tenantId, 'custom_branding');
 
   const [existingBranding] = await db
     .select()
@@ -151,4 +159,67 @@ export async function updateTenantBrandingConfig(
   });
 
   return { branding, documentSettings };
+}
+
+export async function assertCanProvisionStaffSeat(
+  tenantId: string,
+): Promise<void> {
+  await requireTenantPermission(tenantId, 'platform.tenants.manage');
+
+  const [row] = await db
+    .select({ total: count() })
+    .from(tenantMembers)
+    .where(
+      and(
+        eq(tenantMembers.tenantId, tenantId),
+        eq(tenantMembers.status, 'active'),
+      ),
+    );
+
+  const projectedSeats = Number(row?.total ?? 0) + 1;
+  await enforceTenantLimit(tenantId, 'max_staff_seats', projectedSeats);
+}
+
+export async function setTenantFeatureFlag(
+  tenantId: string,
+  flagKey: string,
+  enabled: boolean,
+  actorUserId: string,
+) {
+  await requireTenantPermission(tenantId, 'platform.tenants.manage');
+
+  // Read previous value for audit
+  const [existing] = await db
+    .select()
+    .from(tenantFeatureFlags)
+    .where(
+      and(
+        eq(tenantFeatureFlags.tenantId, tenantId),
+        eq(tenantFeatureFlags.flagKey, flagKey),
+      ),
+    )
+    .limit(1);
+
+  const previousValue = existing ? { enabled: existing.enabled } : null;
+
+  const [flag] = await db
+    .insert(tenantFeatureFlags)
+    .values({ tenantId, flagKey, enabled })
+    .onConflictDoUpdate({
+      target: [tenantFeatureFlags.tenantId, tenantFeatureFlags.flagKey],
+      set: { enabled, updatedAt: new Date() },
+    })
+    .returning();
+
+  await writeAuditLog({
+    tenantId,
+    actorUserId,
+    action: 'UPDATE',
+    entityType: 'tenant_feature_flag',
+    entityId: flag.id,
+    previousValue,
+    newValue: { flagKey, enabled: flag.enabled },
+  });
+
+  return flag;
 }

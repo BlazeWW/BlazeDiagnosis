@@ -1,22 +1,24 @@
 import { and, eq, or } from 'drizzle-orm';
 
 import { db } from '@/db/client';
-import {
-  invoiceLineItems,
-  invoices,
-  quoteLineItems,
-  quotes,
-} from '@/db/schema';
-import { requireTenantPermission } from '@/lib/authorization/guards';
-import writeAudit from '@/lib/auditWriter'; 
+import { invoiceLineItems, invoices, quoteLineItems, quotes } from '@/db/schema';
 import { createInvoiceNotificationRecord } from '@/features/notifications/services/notificationService';
+import writeAudit from '@/lib/auditWriter';
+import { requireTenantPermission } from '@/lib/authorization/guards';
+import { calculateDocumentTotals, centsToString } from '@/lib/money/cents';
+
+import { allocateInvoiceNumber } from './invoiceNumbering';
+
+/** Quote statuses that may be invoiced (BD-027; pending technical-lead confirmation). */
+const INVOICEABLE_STATUSES: string[] = ['approved', 'partially_approved'];
 
 /**
- * Service: create a new invoice from an approved quote.
+ * Service: issue an invoice from an approved quote (BD-027).
  *
- * This service reads approved or billable quote line items, calculates
- * invoice totals, writes the invoice and line items, logs an audit event,
- * and enqueues a notification for the recipient.
+ * Runs in one transaction: locks the quote row, returns the existing invoice on a
+ * retry, allocates the next per-tenant invoice number, writes the invoice and its
+ * lines, locks the quote, and records an audit event and a notification. If any
+ * step fails, everything is rolled back.
  */
 export async function createInvoiceFromApprovedQuote(
   tenantId: string,
@@ -30,27 +32,43 @@ export async function createInvoiceFromApprovedQuote(
   await requireTenantPermission(tenantId, 'invoices.create');
 
   return db.transaction(async (tx) => {
-    // 1. Fetch the quote with strict multi-tenant constraints
+    // 1. Fetch the quote and lock its row until this transaction ends,
+    //    so a second request for the same quote waits here.
     const [quote] = await tx
       .select()
       .from(quotes)
       .where(and(eq(quotes.tenantId, tenantId), eq(quotes.id, quoteId)))
-      .limit(1);
+      .limit(1)
+      .for('update');
 
     if (!quote) {
       throw new Error('Quote not found.');
     }
 
-    // Business rule check: Prevent re-invoicing an already locked/processed document
+    // 2. Idempotency: a retried request returns the invoice that already exists.
+    const [existingInvoice] = await tx
+      .select()
+      .from(invoices)
+      .where(and(eq(invoices.tenantId, tenantId), eq(invoices.quoteId, quoteId)))
+      .limit(1);
+
+    if (existingInvoice) {
+      return existingInvoice;
+    }
+
+    // 3. Business rules
     if (quote.status === 'locked') {
       throw new Error('This quote has already been processed and locked.');
     }
 
-    // Determine fallback recipient and actor data safely from context context
+    if (!INVOICEABLE_STATUSES.includes(quote.status)) {
+      throw new Error('Only approved quotes can be invoiced.');
+    }
+
     const actorUserId = options?.actorUserId ?? userId;
     const notificationRecipientUserId = options?.notificationRecipientUserId ?? quote.customerId;
 
-    // 2. Query only line items explicitly marked as approved or not requiring verification
+    // 4. Only line items that are approved or don't need approval are invoiced
     const billableItems = await tx
       .select()
       .from(quoteLineItems)
@@ -66,49 +84,42 @@ export async function createInvoiceFromApprovedQuote(
       );
 
     if (!billableItems.length) {
-      throw new Error(
-        'Cannot create an invoice without approved or billable quote items.',
-      );
+      throw new Error('Cannot create an invoice without approved or billable quote items.');
     }
 
-    // 3. Mathematical precision calculations for lines
-    const totals = billableItems.reduce(
-      (acc, item) => {
-        const quantity = Number(item.quantity);
-        const unitPrice = Number(item.unitPrice);
-        const discount = Number(item.discount ?? 0);
-        const taxRate = Number(item.taxRate ?? 0);
-        const lineSubtotal = quantity * unitPrice;
-        const discountedSubtotal = Math.max(lineSubtotal - discount, 0);
-        const tax = discountedSubtotal * (taxRate / 100);
-
-        acc.subtotal += lineSubtotal;
-        acc.discountTotal += discount;
-        acc.taxTotal += tax;
-        acc.total += discountedSubtotal + tax;
-
-        return acc;
-      },
-      { subtotal: 0, taxTotal: 0, discountTotal: 0, total: 0 },
+    // 5. Totals in whole cents via the shared money module (BD-025)
+    const totals = calculateDocumentTotals(
+      billableItems.map((item) => ({
+        discount: item.discount,
+        quantity: item.quantity,
+        taxRate: item.taxRate,
+        unitPrice: item.unitPrice,
+      })),
     );
 
-    // 4. Create the primary parent Invoice record
+    // 6. Next per-tenant invoice number, allocated inside this transaction
+    const issuedAt = new Date();
+    const invoiceNumber = await allocateInvoiceNumber(tx, tenantId, issuedAt);
+
+    // 7. Create the invoice
     const [invoice] = await tx
       .insert(invoices)
       .values({
         tenantId,
         jobCardId: quote.jobCardId,
         customerId: quote.customerId,
-        invoiceNumber: `INV-${Date.now()}`,
-        status: 'draft',
-        subtotal: toMoneyString(totals.subtotal),
-        taxTotal: toMoneyString(totals.taxTotal),
-        discountTotal: toMoneyString(totals.discountTotal),
-        total: toMoneyString(totals.total),
+        quoteId,
+        invoiceNumber,
+        status: 'issued',
+        issuedAt,
+        subtotal: centsToString(totals.subtotal),
+        taxTotal: centsToString(totals.taxTotal),
+        discountTotal: centsToString(totals.discountTotal),
+        total: centsToString(totals.total),
       })
       .returning();
 
-    // 5. Bulk write associated child line structures
+    // 8. Invoice lines
     await tx.insert(invoiceLineItems).values(
       billableItems.map((item) => ({
         tenantId,
@@ -123,22 +134,22 @@ export async function createInvoiceFromApprovedQuote(
       })),
     );
 
-    // 6. Lock down quote reference state transition to prevent double-billing
+    // 9. Lock the quote so it can't be invoiced again
     await tx
       .update(quotes)
       .set({ status: 'locked' })
       .where(and(eq(quotes.id, quoteId), eq(quotes.tenantId, tenantId)));
 
-    // 7. Write an official security audit tracking record (Fulfills Issue 2)
+    // 10. Audit record
     await writeAudit.writeAudit({
       userId: actorUserId,
       action: 'CREATE',
       resource: 'INVOICE',
       resourceId: invoice.id,
-      description: `Generated invoice ${invoice.invoiceNumber} from approved quote ${quoteId}. Total: R${invoice.total}`,
+      description: `Issued invoice ${invoice.invoiceNumber} from quote ${quoteId}. Total: R${invoice.total}`,
     });
 
-    // 8. Generate System App Notifications using the shared team helper inside the transaction
+    // 11. Notification, inside the same transaction
     if (notificationRecipientUserId) {
       await createInvoiceNotificationRecord(
         {
@@ -147,14 +158,10 @@ export async function createInvoiceFromApprovedQuote(
           invoiceId: invoice.id,
           eventType: 'invoice_created',
         },
-        tx as any, // Shared transaction context
+        tx, // Shared transaction context
       );
     }
 
     return invoice;
   });
-}
-
-function toMoneyString(value: number) {
-  return (Math.round((value + Number.EPSILON) * 100) / 100).toFixed(2);
 }

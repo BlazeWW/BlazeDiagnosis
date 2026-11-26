@@ -50,8 +50,10 @@ export function apiValidationError(error: ZodError) {
   );
 }
 
+// Returns a safe message without exposing internal server details
 export function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : 'Internal Server Error';
+  void error;
+  return 'Internal Server Error.';
 }
 
 export function isTenantAccessError(error: unknown) {
@@ -95,6 +97,11 @@ export function handleApiError(route: string, error: unknown) {
     });
   }
 
+  // Malformed JSON is a client request error, not a server error
+  if (error instanceof SyntaxError) {
+    return apiError('BAD_REQUEST', 'Malformed JSON request body.', 400);
+  }
+
   return apiError('INTERNAL_SERVER_ERROR', getErrorMessage(error), 500);
 }
 
@@ -109,6 +116,18 @@ export function requireSearchParam(
   }
 
   return value;
+}
+
+// Thrown by services for client mistakes (missing record, invalid reference) so routes answer 4xx, not 500.
+export class ApiRequestError extends Error {
+  constructor(
+    public readonly code: ApiErrorCode,
+    public readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'ApiRequestError';
+  }
 }
 
 export class MissingSearchParamError extends Error {

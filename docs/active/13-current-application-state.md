@@ -1,6 +1,6 @@
 # Current Application State After Layout and Build Fixes
 
-_Last updated: 2026-07-01_
+_Last updated: 2026-11-12_
 
 ## Purpose
 
@@ -61,6 +61,19 @@ Blaze Diagnostics is now past a pure MVP prototype, but it is not production-rea
 - [x] Reports page.
 - [x] Branding settings page.
 - [x] Showcase/demo page.
+
+## Confirmed job-card persistence behavior
+
+- [x] Tenant-scoped `POST /api/service-requests`, `GET /api/service-requests`, and
+      `GET /api/service-requests/[id]` routes are implemented and covered by tests using
+      the local fixture adapter.
+- [x] The focused job-card suite passes: 6 test files, 30 tests.
+- [ ] The station job-card page still uses demo data and is not integrated with
+      the persistence API; status transitions, assignment, and timeline are also
+      separate follow-up work.
+- [ ] No disposable-database test setup is established in the repository.
+      Transaction failure is covered with a mocked Drizzle transaction, not a live
+      database rollback test.
 
 ### Supplier area
 

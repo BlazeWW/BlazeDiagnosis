@@ -4,16 +4,45 @@ import { useEffect, useState } from 'react';
 
 import { StatusBadge } from '@/components/common/statusBadge';
 import { EmptyState } from '@/components/data-display';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { requestJson } from '@/lib/apiClient';
-import type { VehicleDetailProps, VehicleDetailRecord } from '@/types/vehicles';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { fetchVehicleServiceHistory, requestJson } from '@/lib/apiClient';
+import type {
+  VehicleDetailProps,
+  VehicleDetailRecord,
+  VehicleServiceHistory,
+} from '@/types/vehicles';
+
+import { VehicleHistoryList } from './vehicleHistoryList';
 
 export function VehicleDetail({ vehicleId }: VehicleDetailProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [vehicle, setVehicle] = useState<VehicleDetailRecord | null>(null);
+  const [history, setHistory] = useState<VehicleServiceHistory | null>(null);
+  const [historyError, setHistoryError] = useState<string | null>(null);
 
-    useEffect(() => {
+  // Loaded separately so a history failure never hides the vehicle details.
+  useEffect(() => {
+    if (!vehicleId) return;
+
+    fetchVehicleServiceHistory(vehicleId)
+      .then((data) => setHistory(data.history))
+      .catch((loadError: unknown) =>
+        setHistoryError(
+          loadError instanceof Error
+            ? loadError.message
+            : 'Unable to load service history.',
+        ),
+      );
+  }, [vehicleId]);
+
+  useEffect(() => {
     const loadVehicle = async () => {
       try {
         setError(null);
@@ -24,11 +53,15 @@ export function VehicleDetail({ vehicleId }: VehicleDetailProps) {
           `/api/vehicles/${vehicleId}`,
           { errorMessage: 'Unable to load vehicle.' },
         );
-        
+
         // 2. FIXED: Assign the singular vehicle object to state
         setVehicle(data.vehicle);
       } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : 'Unable to load vehicle.');
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : 'Unable to load vehicle.',
+        );
       } finally {
         setLoading(false);
       }
@@ -59,25 +92,67 @@ export function VehicleDetail({ vehicleId }: VehicleDetailProps) {
   }
 
   return (
-    <Card>
-      <CardHeader className="gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <CardTitle>
-            {vehicle.make ?? 'Vehicle'} {vehicle.model ?? ''}
-          </CardTitle>
-          <CardDescription>
-            {vehicle.registrationNumber ?? 'No registration'} • Owner: {vehicle.customerName ?? 'Unassigned'}
-          </CardDescription>
-        </div>
-        {vehicle.archived ? <StatusBadge tone="warning">Archived</StatusBadge> : <StatusBadge tone="success">Active</StatusBadge>}
-      </CardHeader>
-      <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <DetailItem label="Created" value={vehicle.createdAt ? new Date(vehicle.createdAt).toLocaleString() : '—'} />
-        <DetailItem label="Updated" value={vehicle.updatedAt ? new Date(vehicle.updatedAt).toLocaleString() : '—'} />
-        <DetailItem label="Open jobs" value={String(vehicle.jobs?.length ?? 0)} />
-        <DetailItem label="Quotes" value={String(vehicle.quotes?.length ?? 0)} />
-      </CardContent>
-    </Card>
+    <div className="grid gap-4">
+      <Card>
+        <CardHeader className="gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <CardTitle>
+              {vehicle.make ?? 'Vehicle'} {vehicle.model ?? ''}
+            </CardTitle>
+            <CardDescription>
+              {vehicle.registrationNumber ?? 'No registration'} • Owner:{' '}
+              {vehicle.customerName ?? 'Unassigned'}
+            </CardDescription>
+          </div>
+          {vehicle.archived ? (
+            <StatusBadge tone="warning">Archived</StatusBadge>
+          ) : (
+            <StatusBadge tone="success">Active</StatusBadge>
+          )}
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <DetailItem
+            label="Created"
+            value={
+              vehicle.createdAt
+                ? new Date(vehicle.createdAt).toLocaleString()
+                : '—'
+            }
+          />
+          <DetailItem
+            label="Updated"
+            value={
+              vehicle.updatedAt
+                ? new Date(vehicle.updatedAt).toLocaleString()
+                : '—'
+            }
+          />
+          <DetailItem
+            label="Open jobs"
+            value={String(vehicle.jobs?.length ?? 0)}
+          />
+          <DetailItem
+            label="Quotes"
+            value={String(vehicle.quotes?.length ?? 0)}
+          />
+        </CardContent>
+      </Card>
+
+      <section aria-labelledby="vehicle-history-heading" className="grid gap-4">
+        <h2 className="text-lg font-semibold" id="vehicle-history-heading">
+          Service history
+        </h2>
+        {historyError ? (
+          <EmptyState description={historyError} title="History unavailable" />
+        ) : history ? (
+          <VehicleHistoryList history={history} />
+        ) : (
+          <p className="text-sm text-muted-foreground" role="status">
+            Loading service history...
+          </p>
+        )}
+      </section>
+    </div>
   );
 }
 

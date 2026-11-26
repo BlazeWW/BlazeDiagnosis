@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
+
+import { TenantAccessError } from '@/lib/authorization/guards';
 
 import {
   MissingSearchParamError,
@@ -94,5 +96,71 @@ describe('API response helpers', () => {
       error: { code: 'BAD_REQUEST', details: { param: 'customerId' } },
       success: false,
     });
+  });
+
+  it('returns a safe response for unexpected server errors', async () => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    const response = handleApiError(
+      'GET /api/customers',
+      new Error('Database password is secret.'),
+    );
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Internal Server Error.',
+      },
+      success: false,
+    });
+
+    consoleError.mockRestore();
+  });
+
+  it('returns a forbidden response for tenant access errors', async () => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    const response = handleApiError(
+      'GET /api/customers',
+      new TenantAccessError(),
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'FORBIDDEN',
+        message: 'Forbidden.',
+      },
+      success: false,
+    });
+
+    consoleError.mockRestore();
+  });
+
+  it('returns a bad request response for malformed JSON', async () => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    const response = handleApiError(
+      'POST /api/customers',
+      new SyntaxError('Unexpected token in JSON'),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'BAD_REQUEST',
+        message: 'Malformed JSON request body.',
+      },
+      success: false,
+    });
+
+    consoleError.mockRestore();
   });
 });

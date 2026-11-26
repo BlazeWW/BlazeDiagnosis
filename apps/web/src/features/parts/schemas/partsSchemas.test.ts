@@ -27,6 +27,8 @@ describe('parts schemas', () => {
           {
             partId: uuid,
             partName: 'Brake pads',
+            quantityAvailable: 2,
+            unitPrice: 450,
           },
         ],
         partsRequestId: uuid,
@@ -38,6 +40,8 @@ describe('parts schemas', () => {
           availability: 'available',
           partId: uuid,
           partName: 'Brake pads',
+          quantityAvailable: 2,
+          unitPrice: 450,
         },
       ],
       partsRequestId: uuid,

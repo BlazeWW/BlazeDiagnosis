@@ -11,6 +11,15 @@ interface ISupplier {
   preferred: boolean;
 }
 
+const SUPPLIERS_LOAD_ERROR = 'Error syncing vendor data.';
+
+async function fetchSuppliers(): Promise<ISupplier[]> {
+  const res = await fetch('/api/suppliers');
+  if (!res.ok) throw new Error('Failed to retrieve supplier database records.');
+  const data = await res.json();
+  return data.suppliers || [];
+}
+
 export const SuppliersPanel: React.FC = () => {
   const [suppliers, setSuppliers] = useState<ISupplier[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -25,24 +34,27 @@ export const SuppliersPanel: React.FC = () => {
     preferred: false,
   });
 
-  useEffect(() => {
-    loadSuppliers();
-  }, []);
-
   const loadSuppliers = async () => {
     try {
       setLoading(true);
       setErrorText(null);
-      const res = await fetch('/api/suppliers');
-      if (!res.ok) throw new Error('Failed to retrieve supplier database records.');
-      const data = await res.json();
-      setSuppliers(data.suppliers || []);
-    } catch (err: any) {
-      setErrorText(err.message || 'Error syncing vendor data.');
+      setSuppliers(await fetchSuppliers());
+    } catch (err) {
+      setErrorText(err instanceof Error ? err.message : SUPPLIERS_LOAD_ERROR);
     } finally {
       setLoading(false);
     }
   };
+
+  // State is only set once the request settles (loading already starts as true).
+  useEffect(() => {
+    fetchSuppliers()
+      .then(setSuppliers)
+      .catch((err: unknown) =>
+        setErrorText(err instanceof Error ? err.message : SUPPLIERS_LOAD_ERROR),
+      )
+      .finally(() => setLoading(false));
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -66,8 +78,8 @@ export const SuppliersPanel: React.FC = () => {
 
       setForm({ name: '', email: '', phone: '', status: 'active', preferred: false });
       await loadSuppliers();
-    } catch (err: any) {
-      setErrorText(err.message || 'Failed to save vendor.');
+    } catch (err) {
+      setErrorText(err instanceof Error ? err.message : 'Failed to save vendor.');
     } finally {
       setIsPending(false);
     }
