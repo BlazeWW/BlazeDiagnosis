@@ -460,3 +460,25 @@ Tests: `apps/web/src/components/forms/supplierResponseForm.test.tsx` (4 tests) �
 ### Out of scope
 - `activeUsers` metric — deferred until Auth0 user linking lands.
 - UI wiring (`apps/web/src/app/[locale]/(platform)/platform/usage/page.tsx`) is a follow-up task.
+
+## Customer dashboard (BD-036)
+
+### Contract
+`getCustomerDashboard()`:
+- **Identity:** resolved from the signed-in user via `requireUser()` → `customers.user_id` lookup, never from a client-supplied ID. Same pattern as BD-037 (customer service history).
+- **Requires:** active tenant (`user.activeTenantId`) and a linked customer record.
+- **Returns:** counts + preview items for vehicles, open quotes, open invoices, pending requests.
+- **No internal fields exposed:** SELECT clauses exclude `notes`, `customer_concern`, `vin`, `amount_paid`, `tax_total`, `subtotal` (asserted by `customerDashboardRepository.test.ts`).
+- **Tenant + customer scoped:** every query filters `tenantId` AND `customerId`.
+
+### Error states
+- Signed out → `signed_out` empty state with sign-in link.
+- No linked customer profile → `not_linked` empty state.
+- Unexpected failure → `ErrorState` with retry message.
+
+### Tests
+- `customerDashboardRepository.test.ts` (6 tests) — SQL scoping via `drizzle.mock`.
+- `customerDashboardService.test.ts` (6 tests) — identity resolution + return shape.
+
+### Out of scope
+- Populated-state UI requires a real DB with a customer linked to the signed-in Auth0 subject (seed script is a follow-up). Signed-out/not-linked/error states are verified via dev server.
