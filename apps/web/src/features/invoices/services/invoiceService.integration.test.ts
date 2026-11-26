@@ -4,7 +4,9 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { db as Db } from '@/db/client';
 import {
   customers,
+  invoiceLineItems,
   invoices,
+  invoiceSequences,
   jobCards,
   quoteLineItems,
   quotes,
@@ -12,6 +14,7 @@ import {
   vehicles,
 } from '@/db/schema';
 
+import type { allocateInvoiceNumber as AllocateNumber } from './invoiceNumbering';
 import type { createInvoiceFromApprovedQuote as CreateInvoice } from './invoiceService';
 
 // Only permissions, audit and notifications are faked. The database and the
@@ -38,6 +41,7 @@ describe.skipIf(!useRealDb)(
   () => {
     let db: typeof Db;
     let createInvoiceFromApprovedQuote: typeof CreateInvoice;
+    let allocateInvoiceNumber: typeof AllocateNumber;
     const createdTenantIds: string[] = [];
 
     beforeAll(async () => {
@@ -45,6 +49,7 @@ describe.skipIf(!useRealDb)(
       // and on CI (no .env.test) this whole block is skipped instead.
       ({ db } = await import('@/db/client'));
       ({ createInvoiceFromApprovedQuote } = await import('./invoiceService'));
+      ({ allocateInvoiceNumber } = await import('./invoiceNumbering'));
     });
 
     afterAll(async () => {
@@ -262,6 +267,146 @@ describe.skipIf(!useRealDb)(
 
       expect(invoiceA.invoiceNumber).toBe(`INV-${year}-0001`);
       expect(invoiceB.invoiceNumber).toBe(`INV-${year}-0001`);
+    });
+
+    it('invoices only the approved lines of a partially approved quote', async () => {
+      const tenantId = await createTenant('partial');
+      const quoteId = await seedApprovedQuote(tenantId, 'partial');
+      const [approvedLine] = await db
+        .select()
+        .from(quoteLineItems)
+        .where(eq(quoteLineItems.quoteId, quoteId));
+
+      // Add a declined line and mark the quote partially approved.
+      await db.insert(quoteLineItems).values({
+        tenantId,
+        quoteId,
+        jobCardId: approvedLine.jobCardId,
+        category: 'optional_service',
+        description: 'Wiper blades',
+        quantity: '1',
+        unitPrice: '120.00',
+        taxRate: '15',
+        total: '120.00',
+        approvalStatus: 'declined',
+      });
+      await db
+        .update(quotes)
+        .set({ status: 'partially_approved' })
+        .where(eq(quotes.id, quoteId));
+
+      const invoice = await createInvoiceFromApprovedQuote(
+        tenantId,
+        quoteId,
+        'actor-1',
+      );
+
+      // Only the approved brake pads line: R218.50, not R356.50.
+      expect(invoice.total).toBe('218.50');
+      const lines = await db
+        .select()
+        .from(invoiceLineItems)
+        .where(eq(invoiceLineItems.invoiceId, invoice.id));
+      expect(lines.map((line) => line.description)).toEqual(['Brake pads']);
+    });
+
+    it('refuses a draft quote and uses no invoice number', async () => {
+      const tenantId = await createTenant('draft');
+      const quoteId = await seedApprovedQuote(tenantId, 'draft');
+      await db
+        .update(quotes)
+        .set({ status: 'draft' })
+        .where(eq(quotes.id, quoteId));
+
+      await expect(
+        createInvoiceFromApprovedQuote(tenantId, quoteId, 'actor-1'),
+      ).rejects.toThrow('Only approved quotes can be invoiced.');
+
+      expect(
+        await db.select().from(invoices).where(eq(invoices.tenantId, tenantId)),
+      ).toHaveLength(0);
+      expect(
+        await db
+          .select()
+          .from(invoiceSequences)
+          .where(eq(invoiceSequences.tenantId, tenantId)),
+      ).toHaveLength(0);
+    });
+
+    it('refuses a quote with no billable lines and uses no invoice number', async () => {
+      const tenantId = await createTenant('nolines');
+      const quoteId = await seedApprovedQuote(tenantId, 'nolines');
+      await db
+        .update(quoteLineItems)
+        .set({ approvalStatus: 'declined' })
+        .where(eq(quoteLineItems.quoteId, quoteId));
+
+      await expect(
+        createInvoiceFromApprovedQuote(tenantId, quoteId, 'actor-1'),
+      ).rejects.toThrow(
+        'Cannot create an invoice without approved or billable quote items.',
+      );
+
+      expect(
+        await db.select().from(invoices).where(eq(invoices.tenantId, tenantId)),
+      ).toHaveLength(0);
+      expect(
+        await db
+          .select()
+          .from(invoiceSequences)
+          .where(eq(invoiceSequences.tenantId, tenantId)),
+      ).toHaveLength(0);
+    });
+
+    it('returns the same invoice when the quote is issued again later', async () => {
+      const tenantId = await createTenant('retry');
+      const quoteId = await seedApprovedQuote(tenantId, 'retry');
+
+      const first = await createInvoiceFromApprovedQuote(
+        tenantId,
+        quoteId,
+        'actor-1',
+      );
+      const second = await createInvoiceFromApprovedQuote(
+        tenantId,
+        quoteId,
+        'actor-1',
+      );
+
+      expect(second.id).toBe(first.id);
+      const [sequence] = await db
+        .select()
+        .from(invoiceSequences)
+        .where(eq(invoiceSequences.tenantId, tenantId));
+      expect(sequence.lastNumber).toBe(1);
+    });
+
+    it('restarts numbering each year and keeps counting the old year', async () => {
+      const tenantId = await createTenant('years');
+
+      const numbers = await db.transaction(async (tx) => [
+        await allocateInvoiceNumber(
+          tx,
+          tenantId,
+          new Date('2026-06-01T12:00:00'),
+        ),
+        await allocateInvoiceNumber(
+          tx,
+          tenantId,
+          new Date('2027-06-01T12:00:00'),
+        ),
+        await allocateInvoiceNumber(
+          tx,
+          tenantId,
+          new Date('2026-06-02T12:00:00'),
+        ),
+      ]);
+
+      expect(numbers).toEqual([
+        'INV-2026-0001',
+        'INV-2027-0001',
+        'INV-2026-0002',
+      ]);
     });
   },
 );
