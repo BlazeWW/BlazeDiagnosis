@@ -1,6 +1,6 @@
+
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { Route } from 'next';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -11,7 +11,10 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { AppShellProps, AppSurface, NavItem } from '@/types/navigation';
 
-import { getLocaleFromPathname, isNavigationItemActive } from './navigationUtils';
+import {
+  getLocaleFromPathname,
+  isNavigationItemActive,
+} from './navigationUtils';
 
 const navItems: Record<AppSurface, { href: string; label: string }[]> = {
   customer: [
@@ -68,62 +71,12 @@ export function AppShell({
 }: AppShellProps) {
   const pathname = usePathname();
   const locale = getLocaleFromPathname(pathname);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const mobileMenuRef = useRef<HTMLDivElement>(null);
-
   const dashboardHref = `/${locale}/${surface}`;
-  const items = useMemo<NavItem[]>(
-    () => navItems[surface].map((item) => ({
-      href: `/${locale}${item.href}` as Route,
-      label: item.label,
-    })),
-    [locale, surface],
-  );
 
-  const closeMobileMenu = (restoreFocus = false) => {
-    setMobileMenuOpen(false);
-    if (restoreFocus) {
-      requestAnimationFrame(() => menuButtonRef.current?.focus());
-    }
-  };
-
-  useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    if (!mobileMenuOpen) return;
-
-    const firstLink = mobileMenuRef.current?.querySelector<HTMLAnchorElement>('a');
-    firstLink?.focus();
-  }, [mobileMenuOpen]);
-
-  const handleMobileMenuKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      closeMobileMenu(true);
-      return;
-    }
-
-    if (event.key !== 'Tab') return;
-
-    const focusableItems = mobileMenuRef.current?.querySelectorAll<HTMLElement>(
-      'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
-    );
-    if (!focusableItems?.length) return;
-
-    const firstItem = focusableItems[0];
-    const lastItem = focusableItems[focusableItems.length - 1];
-
-    if (event.shiftKey && document.activeElement === firstItem) {
-      event.preventDefault();
-      lastItem.focus();
-    } else if (!event.shiftKey && document.activeElement === lastItem) {
-      event.preventDefault();
-      firstItem.focus();
-    }
-  };
+  const items: NavItem[] = navItems[surface].map((item) => ({
+    href: `/${locale}${item.href}` as Route,
+    label: item.label,
+  }));
 
   const isActive = (href: string) =>
     isNavigationItemActive(pathname, href, dashboardHref);
@@ -146,12 +99,14 @@ export function AppShell({
             <TenantBrandMark surfaceLabel={surfaceLabels[surface]} />
           </Link>
 
+          {/* Desktop navigation */}
           <nav
             aria-label={`${surfaceLabels[surface]} navigation`}
             className="hidden min-w-0 items-center gap-1 overflow-x-auto rounded-full border border-border/70 bg-muted/50 p-1 lg:flex"
           >
             {items.map((item) => {
               const active = isActive(item.href);
+
               return (
                 <Button
                   asChild
@@ -171,74 +126,54 @@ export function AppShell({
             })}
           </nav>
 
+          {/* Desktop theme toggle */}
           <div className="hidden lg:block">
             <ThemeToggle />
           </div>
 
+          {/* Mobile navigation */}
           <div className="flex shrink-0 items-center gap-2 lg:hidden">
             <ThemeToggle compact />
-            <button
-              ref={menuButtonRef}
-              type="button"
-              aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
-              aria-expanded={mobileMenuOpen}
-              aria-controls="mobile-app-navigation"
-              aria-haspopup="dialog"
-              onClick={() => setMobileMenuOpen((open) => !open)}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-            >
-              <span>{mobileMenuOpen ? 'Close' : 'Menu'}</span>
-              <span aria-hidden="true">{mobileMenuOpen ? '×' : '☰'}</span>
-            </button>
+
+            <details key={pathname} className="group relative">
+              <summary className="min-h-11 list-none cursor-pointer select-none rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden">
+                <span className="flex items-center gap-2">
+                  Menu
+                  <span aria-hidden="true">☰</span>
+                </span>
+              </summary>
+
+              <div className="absolute right-0 z-50 mt-2 grid max-h-[calc(100dvh-6rem)] min-w-56 gap-1 overflow-y-auto overscroll-contain rounded-xl border border-border bg-card p-2 shadow-xl">
+                <nav
+                  aria-label={`${surfaceLabels[surface]} mobile navigation`}
+                  className="grid gap-1"
+                >
+                  {items.map((item) => {
+                    const active = isActive(item.href);
+
+                    return (
+                      <Link
+                        className={cn(
+                          'flex min-h-11 items-center rounded-lg px-3 py-2',
+                          'text-sm font-medium transition-colors',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                          active
+                            ? 'bg-muted text-foreground'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                        )}
+                        href={item.href}
+                        key={item.href}
+                        aria-current={active ? 'page' : undefined}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </nav>
+              </div>
+            </details>
           </div>
         </div>
-
-        {mobileMenuOpen ? (
-          <>
-            <button
-              type="button"
-              aria-label="Close navigation menu"
-              onClick={() => closeMobileMenu(true)}
-              className="fixed inset-0 z-40 cursor-default bg-black/20 lg:hidden"
-            />
-            <div
-              id="mobile-app-navigation"
-              ref={mobileMenuRef}
-              role="dialog"
-              aria-modal="true"
-              aria-label={`${surfaceLabels[surface]} menu`}
-              onKeyDown={handleMobileMenuKeyDown}
-              className="fixed inset-x-0 top-[4.25rem] z-50 border-b border-border bg-card p-3 shadow-xl sm:px-6 lg:hidden"
-            >
-              <nav
-                aria-label={`${surfaceLabels[surface]} mobile navigation`}
-                className="mx-auto grid max-h-[calc(100dvh-6rem)] w-full max-w-7xl gap-1 overflow-y-auto overscroll-contain"
-              >
-                {items.map((item) => {
-                  const active = isActive(item.href);
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      aria-current={active ? 'page' : undefined}
-                      onClick={() => closeMobileMenu()}
-                      className={cn(
-                        'flex min-h-11 items-center rounded-lg px-3 py-2',
-                        'text-sm font-medium transition-colors',
-                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-                        active
-                          ? 'bg-muted text-foreground'
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                      )}
-                    >
-                      {item.label}
-                    </Link>
-                  );
-                })}
-              </nav>
-            </div>
-          </>
-        ) : null}
       </header>
 
       <main
@@ -251,15 +186,23 @@ export function AppShell({
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
               {surfaceLabels[surface]}
             </p>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h1>
+
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+              {title}
+            </h1>
+
             {description ? (
               <p className="text-sm leading-6 text-muted-foreground sm:text-base">
                 {description}
               </p>
             ) : null}
           </div>
-          {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
+
+          {actions ? (
+            <div className="flex flex-wrap gap-3">{actions}</div>
+          ) : null}
         </div>
+
         {children}
       </main>
     </div>
