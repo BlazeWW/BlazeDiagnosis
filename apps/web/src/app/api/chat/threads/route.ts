@@ -34,7 +34,10 @@ export async function POST(request: Request) {
     const input = createChatThreadSchema.parse(await request.json());
     const thread =
       input.type === 'customer'
-        ? await createJobChatThread(tenant.tenantId, input.jobCardId, user.id)
+        ? await createJobChatThread(
+          tenant.tenantId,
+          input.jobCardId,
+          user.id)
         : await createSupplierChatThread(
             tenant.tenantId,
             input.partsRequestId,
