@@ -1,9 +1,16 @@
+'use client';
+
 import type { Route } from 'next';
 import Link from 'next/link';
 
 import { FeatureRecordList } from '@/components/common/featureDashboard';
 import { EmptyState } from '@/components/data-display/emptyState';
 import { Button } from '@/components/ui/button';
+import {
+  RepairProgressTimeline,
+  type RepairProgressTimelineProps,
+} from '@/features/job-cards/components/repairProgressTimeline';
+import type { CustomerStatusEventInput } from '@/features/job-cards/services/repairProgressTimeline';
 import type { FeatureRecord } from '@/types/featureDashboard';
 import type {
   CustomerServiceHistoryItem,
@@ -26,6 +33,56 @@ function describeVehicle(item: CustomerServiceHistoryItem) {
 
   return registrationNumber ? `${name} (${registrationNumber})` : name;
 }
+
+function buildInitialEventsFromItem(
+  item: CustomerServiceHistoryItem,
+): CustomerStatusEventInput[] {
+  const events: CustomerStatusEventInput[] = [
+    {
+      id: `${item.jobCardId}-opened`,
+      fromStatus: null,
+      toStatus: 'request_received',
+      createdAt: item.openedAt,
+    },
+  ];
+
+  if (item.status !== 'request_received') {
+    events.push({
+      id: `${item.jobCardId}-${item.status}`,
+      fromStatus: 'request_received',
+      toStatus: item.status,
+      createdAt: item.completedAt ?? item.expectedCompletionAt ?? item.openedAt,
+    });
+  }
+
+  return events;
+}
+
+const defaultStatusEventsAdapter: NonNullable<
+  RepairProgressTimelineProps['subscribeToEvents']
+> = (jobCardId, onUpdate) => {
+  const controller = new AbortController();
+
+  void fetch(`/api/customer/job-cards/${encodeURIComponent(jobCardId)}/status-events`, {
+    signal: controller.signal,
+  })
+    .then(async (response) => {
+      if (!response.ok) return;
+      const payload = (await response.json()) as {
+        data?: { events?: CustomerStatusEventInput[] };
+        events?: CustomerStatusEventInput[];
+      };
+      const events = payload.data?.events ?? payload.events;
+      if (Array.isArray(events) && events.length > 0) {
+        onUpdate(events);
+      }
+    })
+    .catch(() => {
+      // Keep initial milestones when offline or route is unavailable.
+    });
+
+  return () => controller.abort();
+};
 
 export function toServiceHistoryRecord(
   item: CustomerServiceHistoryItem,
@@ -62,9 +119,11 @@ export function toServiceHistoryRecord(
 export function ServiceHistoryList({
   basePath,
   history,
+  subscribeToEvents = defaultStatusEventsAdapter,
 }: {
   basePath: string;
   history: CustomerServiceHistoryPage;
+  subscribeToEvents?: RepairProgressTimelineProps['subscribeToEvents'];
 }) {
   const { items, pagination } = history;
 
@@ -88,6 +147,25 @@ export function ServiceHistoryList({
         items={items.map(toServiceHistoryRecord)}
         title="Service history"
       />
+
+      <div className="space-y-4">
+        {items.map((item) => (
+          <section
+            aria-label={`Repair progress for ${item.jobNumber}`}
+            className="rounded-lg border p-4"
+            key={item.jobCardId}
+          >
+            <h2 className="mb-3 text-sm font-semibold">
+              {item.jobNumber} — {describeVehicle(item)}
+            </h2>
+            <RepairProgressTimeline
+              initialEvents={buildInitialEventsFromItem(item)}
+              jobCardId={item.jobCardId}
+              subscribeToEvents={subscribeToEvents}
+            />
+          </section>
+        ))}
+      </div>
 
       {pagination.totalPages > 1 ? (
         <nav
