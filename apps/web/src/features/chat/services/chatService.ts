@@ -1,4 +1,5 @@
-import { and, desc, eq, gt, inArray, lte, lt, ne, or, sql } from 'drizzle-orm';
+import {and,asc,desc,eq,gt,inArray,lt,ne,or,sql,
+} from 'drizzle-orm';
 
 import { db } from '@/db/client';
 import {
@@ -16,7 +17,10 @@ import { requireTenantPermission } from '@/lib/authorization/guards';
 
 export type ChatParticipantType = 'customer' | 'staff' | 'supplier';
 
-export type ChatMessageVisibility = 'internal' | 'customer' | 'supplier';
+export type ChatMessageVisibility =
+  | 'internal'
+  | 'customer'
+  | 'supplier';
 
 export class ChatParticipantAccessError extends Error {
   constructor() {
@@ -28,6 +32,7 @@ export class ChatParticipantAccessError extends Error {
 export async function createJobChatThread(
   tenantId: string,
   jobCardId: string,
+  customerId?: string,
   creatorUserId: string,
 ) {
   await requireTenantPermission(tenantId, 'jobs.read');
@@ -45,10 +50,17 @@ export async function createJobChatThread(
         eq(customers.tenantId, jobCards.tenantId),
       ),
     )
-    .where(and(eq(jobCards.tenantId, tenantId), eq(jobCards.id, jobCardId)))
+    .where(
+      and(
+        eq(jobCards.tenantId, tenantId),
+        eq(jobCards.id, jobCardId),
+        customerId ? eq(jobCards.customerId, customerId) : undefined,
+      ),
+    )
     .limit(1);
 
   const customerUserId = job?.customerUserId;
+
   if (!job || !customerUserId) {
     return null;
   }
@@ -93,7 +105,9 @@ export async function createSupplierChatThread(
   await requireTenantPermission(tenantId, 'parts.request');
 
   const [partsRequest] = await db
-    .select({ id: partsRequests.id })
+    .select({
+      id: partsRequests.id,
+    })
     .from(partsRequests)
     .where(
       and(
@@ -102,6 +116,7 @@ export async function createSupplierChatThread(
       ),
     )
     .limit(1);
+
   const [supplierMember] = await db
     .select({
       supplierId: suppliers.id,
@@ -181,8 +196,14 @@ async function getParticipantThread(
     .innerJoin(
       chatThreads,
       and(
-        eq(chatThreads.id, chatThreadParticipants.threadId),
-        eq(chatThreads.tenantId, chatThreadParticipants.tenantId),
+        eq(
+          chatThreads.id,
+          chatThreadParticipants.threadId,
+        ),
+        eq(
+          chatThreads.tenantId,
+          chatThreadParticipants.tenantId,
+        ),
       ),
     )
     .where(
@@ -197,7 +218,9 @@ async function getParticipantThread(
   return result ?? null;
 }
 
-function visibleMessagesFor(participantType: ChatParticipantType) {
+function visibleMessagesFor(
+  participantType: ChatParticipantType,
+) {
   if (participantType === 'customer') {
     return eq(chatMessages.visibility, 'customer');
   }
@@ -223,8 +246,14 @@ export async function listChatThreads(
     .innerJoin(
       chatThreads,
       and(
-        eq(chatThreads.id, chatThreadParticipants.threadId),
-        eq(chatThreads.tenantId, chatThreadParticipants.tenantId),
+        eq(
+          chatThreads.id,
+          chatThreadParticipants.threadId,
+        ),
+        eq(
+          chatThreads.tenantId,
+          chatThreadParticipants.tenantId,
+        ),
       ),
     )
     .where(
@@ -232,7 +261,10 @@ export async function listChatThreads(
         eq(chatThreadParticipants.tenantId, tenantId),
         eq(chatThreadParticipants.userId, userId),
         participantType
-          ? eq(chatThreadParticipants.participantType, participantType)
+          ? eq(
+              chatThreadParticipants.participantType,
+              participantType,
+            )
           : undefined,
       ),
     )
@@ -248,21 +280,39 @@ export async function listChatThreads(
     .innerJoin(
       chatMessages,
       and(
-        eq(chatMessages.tenantId, chatThreadParticipants.tenantId),
-        eq(chatMessages.threadId, chatThreadParticipants.threadId),
+        eq(
+          chatMessages.tenantId,
+          chatThreadParticipants.tenantId,
+        ),
+        eq(
+          chatMessages.threadId,
+          chatThreadParticipants.threadId,
+        ),
         ne(chatMessages.senderUserId, userId),
-        gt(chatMessages.createdAt, chatThreadParticipants.lastReadAt),
+        gt(
+          chatMessages.createdAt,
+          chatThreadParticipants.lastReadAt,
+        ),
         or(
           and(
-            eq(chatThreadParticipants.participantType, 'customer'),
+            eq(
+              chatThreadParticipants.participantType,
+              'customer',
+            ),
             eq(chatMessages.visibility, 'customer'),
           ),
           and(
-            eq(chatThreadParticipants.participantType, 'supplier'),
+            eq(
+              chatThreadParticipants.participantType,
+              'supplier',
+            ),
             eq(chatMessages.visibility, 'supplier'),
           ),
           and(
-            eq(chatThreadParticipants.participantType, 'staff'),
+            eq(
+              chatThreadParticipants.participantType,
+              'staff',
+            ),
             inArray(chatMessages.visibility, [
               'internal',
               'customer',
@@ -277,25 +327,37 @@ export async function listChatThreads(
         eq(chatThreadParticipants.tenantId, tenantId),
         eq(chatThreadParticipants.userId, userId),
         participantType
-          ? eq(chatThreadParticipants.participantType, participantType)
+          ? eq(
+              chatThreadParticipants.participantType,
+              participantType,
+            )
           : undefined,
       ),
     )
     .groupBy(chatThreadParticipants.threadId);
+
   const unreadByThread = new Map(
-    unreadRows.map((row) => [row.threadId, row.count]),
+    unreadRows.map((row) => [
+      row.threadId,
+      row.count,
+    ]),
   );
+
   const threads = participants.map(({ thread }) => ({
     id: thread.id,
     jobCardId: thread.jobCardId,
     partsRequestId: thread.partsRequestId,
     threadType: thread.threadType,
-    unreadCount: unreadByThread.get(thread.id) ?? 0,
+    unreadCount:
+      unreadByThread.get(thread.id) ?? 0,
   }));
 
   return {
     threads,
-    totalUnreadCount: unreadRows.reduce((total, row) => total + row.count, 0),
+    totalUnreadCount: unreadRows.reduce(
+      (total, row) => total + row.count,
+      0,
+    ),
   };
 }
 
@@ -316,13 +378,19 @@ export async function sendChatMessage(input: {
     throw new ChatParticipantAccessError();
   }
 
-  const { participant: threadParticipant, thread } = participant;
-  const defaultVisibility =
+  const {
+    participant: threadParticipant,
+    thread,
+  } = participant;
+
+  const defaultVisibility: ChatMessageVisibility =
     threadParticipant.participantType === 'supplier' ||
     thread.threadType === 'parts_supplier'
       ? 'supplier'
       : 'customer';
-  const visibility = input.visibility ?? defaultVisibility;
+
+  const visibility =
+    input.visibility ?? defaultVisibility;
 
   if (
     threadParticipant.participantType === 'customer' &&
@@ -384,6 +452,7 @@ export async function listChatMessages(input: {
 
   let beforeDate: Date | undefined;
   let beforeId: string | undefined;
+
   if (input.before) {
     const [cursor] = await db
       .select({
@@ -393,10 +462,21 @@ export async function listChatMessages(input: {
       .from(chatMessages)
       .where(
         and(
-          eq(chatMessages.tenantId, input.tenantId),
-          eq(chatMessages.threadId, input.threadId),
-          eq(chatMessages.id, input.before),
-          visibleMessagesFor(authorized.participant.participantType),
+          eq(
+            chatMessages.tenantId,
+            input.tenantId,
+          ),
+          eq(
+            chatMessages.threadId,
+            input.threadId,
+          ),
+          eq(
+            chatMessages.id,
+            input.before,
+          ),
+          visibleMessagesFor(
+            authorized.participant.participantType,
+          ),
         ),
       )
       .limit(1);
@@ -410,15 +490,27 @@ export async function listChatMessages(input: {
   }
 
   const readAt = new Date();
+
   if (!input.before) {
     await db
       .update(chatThreadParticipants)
-      .set({ lastReadAt: readAt })
+      .set({
+        lastReadAt: readAt,
+      })
       .where(
         and(
-          eq(chatThreadParticipants.tenantId, input.tenantId),
-          eq(chatThreadParticipants.threadId, input.threadId),
-          eq(chatThreadParticipants.userId, input.userId),
+          eq(
+            chatThreadParticipants.tenantId,
+            input.tenantId,
+          ),
+          eq(
+            chatThreadParticipants.threadId,
+            input.threadId,
+          ),
+          eq(
+            chatThreadParticipants.userId,
+            input.userId,
+          ),
         ),
       );
   }
@@ -433,26 +525,50 @@ export async function listChatMessages(input: {
     .from(chatMessages)
     .where(
       and(
-        eq(chatMessages.tenantId, input.tenantId),
-        eq(chatMessages.threadId, input.threadId),
-        visibleMessagesFor(authorized.participant.participantType),
-        input.before && beforeDate && beforeId
+        eq(
+          chatMessages.tenantId,
+          input.tenantId,
+        ),
+        eq(
+          chatMessages.threadId,
+          input.threadId,
+        ),
+        visibleMessagesFor(
+          authorized.participant.participantType,
+        ),
+        input.before &&
+        beforeDate &&
+        beforeId
           ? or(
-              lt(chatMessages.createdAt, beforeDate),
+              lt(
+                chatMessages.createdAt,
+                beforeDate,
+              ),
               and(
-                eq(chatMessages.createdAt, beforeDate),
-                lt(chatMessages.id, beforeId),
+                eq(
+                  chatMessages.createdAt,
+                  beforeDate,
+                ),
+                lt(
+                  chatMessages.id,
+                  beforeId,
+                ),
               ),
             )
-          : lte(chatMessages.createdAt, readAt),
+          : undefined,
       ),
     )
-    .orderBy(desc(chatMessages.createdAt), desc(chatMessages.id))
+    .orderBy(
+      desc(chatMessages.createdAt),
+      desc(chatMessages.id),
+    )
     .limit(input.limit + 1);
 
   const hasMore = rows.length > input.limit;
   const page = rows.slice(0, input.limit);
-  const nextCursor = hasMore ? (page.at(-1)?.id ?? null) : null;
+  const nextCursor = hasMore
+    ? page.at(-1)?.id ?? null
+    : null;
 
   return {
     messages: page.reverse(),
