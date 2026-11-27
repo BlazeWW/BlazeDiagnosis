@@ -99,7 +99,7 @@ These items must be addressed before production or paid pilot usage.
 
 - [ ] Replace mock/session fallback authentication with production auth.
 - [ ] Remove or strictly gate any demo/localStorage workflows.
-- [ ] Connect remaining customer, vehicle, job card, quote, invoice, supplier, delivery, and message pages to database-backed services; job-card persistence endpoints exist, but the station page remains demo-backed.
+- [ ] Connect customer, vehicle, job card, quote, invoice, supplier, and delivery pages to database-backed services. Customer and supplier messaging now use persisted, tenant-scoped participant threads and unread state.
 - [ ] Enforce tenant authorization on every tenant-owned read and mutation.
 - [ ] Remove temporary singular alias API routes after frontend migration.
 - [ ] Add automated tests for tenant isolation, quote approvals, invoice generation, and supplier workflows.
@@ -107,6 +107,16 @@ These items must be addressed before production or paid pilot usage.
 - [ ] Add CI checks for install, lint, typecheck, tests, and build.
 - [ ] Add production deployment, backup, restore, logging, and monitoring runbooks.
 - [ ] Complete security review and sign-off.
+
+Messaging implementation note: `/api/chat/threads` creates customer conversations from tenant-owned jobs and supplier conversations from tenant-owned parts requests plus active memberships whose email matches the tenant-linked supplier contact. Reads, sends, visibility filtering, unread counts, and cursor pagination are participant-scoped. Chat attachments are not accepted or served; attachment support requires its own private-file authorization work.
+
+Messaging verification (2026-11-06):
+
+- `pnpm --filter @blaze-diagnostics/web test` — 101 tests passed using test-only Auth0/database placeholders.
+- `pnpm --filter @blaze-diagnostics/web typecheck` — blocked by pre-existing vehicle form filename casing and missing quote permission types; no messaging diagnostics were reported.
+- `pnpm --filter @blaze-diagnostics/web lint` — blocked because the installed TypeScript 7.0.2 is unsupported by the repository's typescript-eslint version.
+- `pnpm --filter @blaze-diagnostics/web build` — blocked by the pre-existing missing root layout for `/parts-request` and vehicle form filename casing.
+- The new migration was not run against a live database. BlazeWebWorks technical-lead review and approval remain pending.
 
 ## Immediate local validation required
 

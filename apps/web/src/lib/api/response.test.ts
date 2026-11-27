@@ -50,6 +50,20 @@ describe('API response helpers', () => {
     });
   });
 
+  it('maps unauthenticated and unauthorized requests to the correct status', async () => {
+    const unauthenticated = handleApiError(
+      'GET /api/resource',
+      new Error('Authentication required.'),
+    );
+    const unauthorized = handleApiError(
+      'POST /api/resource',
+      new Error('Missing permission: jobs.read'),
+    );
+
+    expect(unauthenticated.status).toBe(401);
+    expect(unauthorized.status).toBe(403);
+  });
+
   it('turns zod errors into validation responses', async () => {
     const result = z
       .object({ name: z.string().min(1) })
