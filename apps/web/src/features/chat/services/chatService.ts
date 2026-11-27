@@ -32,8 +32,8 @@ export class ChatParticipantAccessError extends Error {
 export async function createJobChatThread(
   tenantId: string,
   jobCardId: string,
-  customerId: string,
-  creatorUserId?: string,
+  creatorUserId: string,
+  customerId?: string,
 ) {
   await requireTenantPermission(tenantId, 'jobs.read');
 
@@ -59,11 +59,12 @@ export async function createJobChatThread(
     )
     .limit(1);
 
-  const customerUserId = job?.customerUserId;
-
-  if (!job || !customerUserId) {
+  if (!job || typeof job.customerUserId !== 'string' || !job.customerUserId) {
     return null;
   }
+
+  // Capture the narrowed value before entering the transaction callback.
+  const resolvedCustomerUserId: string = job.customerUserId;
 
   return db.transaction(async (tx) => {
     const [thread] = await tx
@@ -76,7 +77,7 @@ export async function createJobChatThread(
       })
       .returning();
 
-    await tx.insert(chatThreadParticipants).values([
+    const participants: (typeof chatThreadParticipants.$inferInsert)[] = [
       {
         participantType: 'staff',
         tenantId,
@@ -87,9 +88,11 @@ export async function createJobChatThread(
         participantType: 'customer',
         tenantId,
         threadId: thread.id,
-        userId: customerUserId,
+        userId: resolvedCustomerUserId,
       },
-    ]);
+    ];
+
+    await tx.insert(chatThreadParticipants).values(participants);
 
     return thread;
   });
