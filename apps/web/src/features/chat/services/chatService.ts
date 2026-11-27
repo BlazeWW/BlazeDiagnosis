@@ -32,8 +32,8 @@ export class ChatParticipantAccessError extends Error {
 export async function createJobChatThread(
   tenantId: string,
   jobCardId: string,
-  customerId?: string,
-  creatorUserId: string,
+  customerId: string,
+  creatorUserId?: string,
 ) {
   await requireTenantPermission(tenantId, 'jobs.read');
 
