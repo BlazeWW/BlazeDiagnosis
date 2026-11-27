@@ -20,17 +20,45 @@ export type AuthenticatedUser = {
   tenantMemberships: TenantMembership[];
 };
 
+
+
+function isTenantMembership(
+  value: unknown,
+): value is TenantMembership {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const membership = value as Record<string, unknown>;
+
+  return (
+    typeof membership.tenantId === 'string' &&
+    membership.tenantId.length > 0 &&
+    typeof membership.role === 'string' &&
+    Array.isArray(membership.permissions) &&
+    membership.permissions.every(
+      (permission) => typeof permission === 'string',
+    ) &&
+    ['active', 'pending', 'suspended'].includes(
+      membership.status as string,
+    )
+  );
+}
+
+
+
 export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
   const authHeader = (await headers()).get('authorization');
   const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
   const cookieToken = (await cookies()).get('auth0_session')?.value ?? null;
   const token = bearerToken ?? cookieToken;
 
-  if (!token) {
-    if (
-      process.env.NODE_ENV === 'development' &&
-      (!process.env.AUTH0_DOMAIN || !process.env.AUTH0_AUDIENCE)
-    ) {
+ if (
+  process.env.NODE_ENV === 'development' &&
+  process.env.APP_ENV === 'development' &&
+  process.env.ENABLE_DEV_AUTH_FALLBACK === 'true' &&
+  (!process.env.AUTH0_DOMAIN || !process.env.AUTH0_AUDIENCE)
+)  {
       return {
         id: 'dev-user-id',
         email: 'dev@station.local',
@@ -57,24 +85,53 @@ export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
       };
     }
 
+  if (!token) {
     return null;
   }
 
   const verified = await verifyAuth0Token(token);
-  const payload = verified.payload as Record<string, unknown>;
+    const payload = verified.payload as Record<string, unknown>;
 
-  const tenantMemberships = (payload['custom:tenant_memberships'] as TenantMembership[]) || [];
-  const activeTenantId = (payload['custom:tenant_id'] as string) || null;
+const rawMemberships = payload['custom:tenant_memberships'];
 
-  return {
-    id: (payload.sub as string) || '',
-    email: (payload.email as string) || '',
-    name: (payload.name as string) || undefined,
-    activeTenantId,
-    tenantRole: (payload['custom:tenant_role'] as SystemRole) || null,
-    permissions: (payload['custom:permissions'] as Permission[]) || [],
-    tenantMemberships,
-  };
+if (
+  rawMemberships !== undefined &&
+  !Array.isArray(rawMemberships)
+) {
+  throw new Error('Invalid tenant membership claims.');
+}
+
+const tenantMemberships: TenantMembership[] =
+  (rawMemberships ?? []).filter(isTenantMembership);
+
+const activeTenantId =
+  typeof payload['custom:tenant_id'] === 'string'
+    ? payload['custom:tenant_id']
+    : null;
+
+const activeMembership = tenantMemberships.find(
+  (membership) =>
+    membership.tenantId === activeTenantId &&
+    membership.status === 'active',
+);
+
+if (activeTenantId && !activeMembership) {
+  throw new Error('Active tenant membership is invalid.');
+}
+
+
+return {
+  id: typeof payload.sub === 'string' ? payload.sub : '',
+  email: typeof payload.email === 'string' ? payload.email : '',
+  name:
+    typeof payload.name === 'string'
+      ? payload.name
+      : undefined,
+  activeTenantId: activeMembership?.tenantId ?? null,
+  tenantRole: activeMembership?.role ?? null,
+  permissions: activeMembership?.permissions ?? [],
+  tenantMemberships,
+};
 }
 
 export async function requireUser() {

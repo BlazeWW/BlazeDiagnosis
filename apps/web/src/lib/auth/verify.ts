@@ -1,25 +1,63 @@
-import { jwtVerify, createRemoteJWKSet } from 'jose';
 
-const auth0Domain = process.env.AUTH0_DOMAIN;
-const auth0Audience = process.env.AUTH0_AUDIENCE;
-const auth0Issuer = auth0Domain
-  ? `https://${auth0Domain}/`
-  : undefined;
+import 'server-only';
 
-let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 
-export async function verifyAuth0Token(token: string) {
-  if (!auth0Domain || !auth0Audience) {
-    throw new Error('Missing AUTH0_DOMAIN or AUTH0_AUDIENCE environment variables.');
+function getAuth0Config() {
+  const domain = process.env.AUTH0_DOMAIN?.trim();
+  const audience = process.env.AUTH0_AUDIENCE?.trim();
+
+  if (!domain || !audience) {
+    throw new Error(
+      'Missing AUTH0_DOMAIN or AUTH0_AUDIENCE environment variables.',
+    );
   }
 
-  jwks ??= createRemoteJWKSet(
-    new URL(`https://${auth0Domain}/.well-known/jwks.json`),
-  );
+  // Accept a hostname, not an arbitrary URL.
+  if (
+    domain.includes('://') ||
+    domain.includes('/') ||
+    domain.includes(' ')
+  ) {
+    throw new Error('AUTH0_DOMAIN must be a valid hostname.');
+  }
 
-  return await jwtVerify(token, jwks, {
-    audience: auth0Audience,
-    issuer: auth0Issuer,
+  const issuer = `https://${domain}/`;
+
+  return {
+    audience,
+    issuer,
+    jwksUrl: new URL(
+      '.well-known/jwks.json',
+      issuer,
+    ),
+  };
+}
+
+let jwks:
+  | ReturnType<typeof createRemoteJWKSet>
+  | null = null;
+
+let jwksUrl: string | null = null;
+
+export async function verifyAuth0Token(token: string) {
+  if (!token || !token.trim()) {
+    throw new Error('Authentication token is required.');
+  }
+
+  const config = getAuth0Config();
+  const currentJwksUrl = config.jwksUrl.toString();
+
+  if (!jwks || jwksUrl !== currentJwksUrl) {
+    jwks = createRemoteJWKSet(config.jwksUrl);
+    jwksUrl = currentJwksUrl;
+  }
+
+  return jwtVerify(token, jwks, {
+    issuer: config.issuer,
+    audience: config.audience,
     algorithms: ['RS256'],
   });
 }
+
+
