@@ -65,6 +65,7 @@ export type FormFieldProps = {
   error?: string;
   id: string;
   label: string;
+  required?: boolean;
 };
 
 

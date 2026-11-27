@@ -16,4 +16,25 @@ describe('FormField', () => {
     expect(markup).toContain('aria-describedby="email-error"');
     expect(markup).toContain('id="email-error"');
   });
+
+  it('marks a required field for sighted and screen reader users', () => {
+    const markup = renderToStaticMarkup(
+      <FormField id="email" label="Email" required>
+        <input id="email" />
+      </FormField>,
+    );
+
+    expect(markup).toContain('aria-hidden="true"');
+    expect(markup).toContain('(required)');
+  });
+
+  it('does not show a required marker when the field is optional', () => {
+    const markup = renderToStaticMarkup(
+      <FormField id="email" label="Email">
+        <input id="email" />
+      </FormField>,
+    );
+
+    expect(markup).not.toContain('(required)');
+  });
 });
