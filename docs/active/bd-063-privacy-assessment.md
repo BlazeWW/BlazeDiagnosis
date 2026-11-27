@@ -7,11 +7,11 @@
 
 ## 1. Executive Summary & Current Code Reality
 
-An assessment of the `main` branch was conducted to catalog personal data flows, examine current access controls, and evaluate retention and deletion mechanisms across 18 distinct data elements in 7 core application domains.
+An assessment of the codebase and active architecture contracts (`09-api-and-data-contracts.md` and `18-auth-tenant-provider-architecture.md`) was conducted to catalog personal data flows, verify actual access controls, and define proposed retention rules across the four core workflows (**Customer**, **Vehicle**, **Messaging / Service & Labour**, and **Authentication & Audit**). This document reflects current code reality and does not claim formal POPIA certification.
 
-- **Retention & Deletion Status:** Currently, "deletion" is handled strictly as a soft archive (`isArchived = true` on customer and vehicle records). There is currently **no** automated database retention, Time-To-Live (TTL), or automated anonymization mechanism in place.
-- **Audit Logging:** Audit logs store before/after snapshots of personal data inside `JSONB` fields alongside IP addresses and user agents **indefinitely**, with no automated purging or masking policy.
-- **Access & Tenant Scoping:** Access to records relies on application-level role checks; strict database-level tenant isolation and log redaction require ongoing verification.
+- **Retention & Deletion Status:** Automated database retention, Time-To-Live (TTL) jobs, hard-delete endpoints, and automated anonymization are **not yet implemented** (`Proposed`).
+- **Encryption & Audit Masking:** Field-level encryption at rest and automated PII masking/rotation on `writeAuditLog` payloads (`previousValue`, `newValue`) are **not yet implemented** (`Proposed`).
+- **Access & Tenant Scoping:** Core routes resolve `tenantId` server-side from Auth0 claims via `requireUser()`, `requireTenantContext()`, and `requireTenantPermission()` with fail-closed `403`/`404` enforcement.
 
 ## 2. Data Inventory & Retention Matrix
 
