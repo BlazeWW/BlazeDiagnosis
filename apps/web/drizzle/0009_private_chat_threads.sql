@@ -1,6 +1,6 @@
 ALTER TABLE "chat_messages" DROP CONSTRAINT "chat_messages_sender_user_id_users_id_fk";--> statement-breakpoint
 ALTER TABLE "chat_messages" ALTER COLUMN "sender_user_id" TYPE text USING "sender_user_id"::text;--> statement-breakpoint
-CREATE TABLE "0009_private_chat_threads.sql" (
+CREATE TABLE "chat_thread_participants" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"tenant_id" uuid NOT NULL,
 	"thread_id" uuid NOT NULL,
