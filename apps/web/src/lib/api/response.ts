@@ -79,10 +79,17 @@ export function handleApiError(route: string, error: unknown) {
     return apiValidationError(error);
   }
 
+  // Preserve existing API request errors such as 404/409.
+  if (error instanceof ApiRequestError) {
+    return apiError(error.code, error.message, error.status);
+  }
+
+  // Authentication errors
   if (error instanceof Error && error.message === 'Authentication required.') {
     return apiError('UNAUTHORIZED', 'Authentication required.', 401);
   }
 
+  // Permission errors
   if (
     error instanceof Error &&
     (error.message.startsWith('Missing permission:') ||
