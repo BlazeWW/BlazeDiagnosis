@@ -300,3 +300,4 @@ describe('BD-027: issuance rules', () => {
     expect(numberingMock.allocateInvoiceNumber).not.toHaveBeenCalled();
   });
 });
+});
