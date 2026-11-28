@@ -43,16 +43,16 @@ const guideContent: Record<
 > = {
   customer: {
     description:
-      'A quick guide to the customer workspace and the records available in this portal.',
+      'A quick guide to your customer dashboard and the records available in your portal.',
     hint:
-      'Start with your customer details, then use the portal navigation to find vehicles, service activity, quotes and invoices.',
+      'Use your dashboard to check linked vehicles, open quotes, unpaid invoices and pending service requests. Open the relevant portal section for more details.',
     steps: [
       {
-        title: 'Check your customer details',
+        title: 'Explore your customer dashboard',
         description:
-          'The customer workspace contains the customer capture form and directory. Use the form to capture new contact details.',
+          'Your dashboard provides an overview of vehicles linked to your profile, open quotes, unpaid invoices and pending service requests.',
         href: '/customer',
-        action: 'Open customer workspace',
+        action: 'Open dashboard',
       },
       {
         title: 'Find your vehicles and service activity',
@@ -181,6 +181,10 @@ export function ContextualHelp({
   };
 
   const reopenGuide = () => {
+    setOnboardingDismissed(window.localStorage, surface, false);
+
+    window.dispatchEvent(new Event(PREFERENCE_CHANGE_EVENT));
+
     setOpenOverride({
       surface,
       isOpen: true,
