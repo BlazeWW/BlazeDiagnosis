@@ -70,7 +70,7 @@ export function BrandedDocumentPreview({
       <CardContent>
         <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
           <div
-            className="flex flex-col gap-4 p-5 text-primary-foreground sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col gap-4 p-5 text-primary-foreground dark:text-white sm:flex-row sm:items-center sm:justify-between"
             style={{ background: branding.primaryColor }}
           >
             <div className="flex items-center gap-3">
@@ -100,19 +100,19 @@ export function BrandedDocumentPreview({
           </div>
 
           <div className="grid gap-5 p-5 sm:grid-cols-2">
-            <div className="space-y-1 text-sm text-muted-foreground">
-              <p className="font-semibold text-foreground">Tenant details</p>
+            <div className="space-y-1 text-sm text-muted-foreground dark:text-white/80">
+              <p className="font-semibold text-foreground dark:text-white">Tenant details</p>
               <p>{branding.tradingAddress}</p>
               <p>{branding.businessPhone}</p>
               <p>{branding.businessEmail}</p>
               <p>{branding.taxNumber}</p>
               {title ? (
-                <p className="pt-3 font-semibold text-foreground">{title}</p>
+                <p className="pt-3 font-semibold text-foreground dark:text-white">{title}</p>
               ) : null}
             </div>
             <div className="space-y-3 rounded-xl border border-border bg-muted/40 p-4">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-sm text-muted-foreground">Status</span>
+                <span className="text-sm text-muted-foreground dark:text-white/80">Status</span>
                 <StatusBadge tone={documentType === 'quote' ? 'warning' : 'success'}>
                   {status ?? (documentType === 'quote' ? 'Draft' : 'Ready')}
                 </StatusBadge>
@@ -121,25 +121,25 @@ export function BrandedDocumentPreview({
                 <div className="space-y-2 border-y border-border py-3">
                   {items.map((item) => (
                     <div className="flex items-start justify-between gap-3 text-xs" key={item.description}>
-                      <span className="text-muted-foreground">
+                      <span className="text-muted-foreground dark:text-white/80">
                         {item.quantity} × {item.description}
                       </span>
-                      <span className="font-mono text-foreground">
+                      <span className="font-mono text-foreground dark:text-white">
                         {formatMoney(item.totalCents / 100)}
                       </span>
                     </div>
                   ))}
                 </div>
               ) : null}
-              <div className="flex items-center justify-between gap-3 text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
+              <div className="flex items-center justify-between gap-3 text-sm dark:text-white">
+                <span className="text-muted-foreground dark:text-white/80">Subtotal</span>
                 <span>{formatMoney(subtotal)}</span>
               </div>
-              <div className="flex items-center justify-between gap-3 text-sm">
-                <span className="text-muted-foreground">Tax</span>
+              <div className="flex items-center justify-between gap-3 text-sm dark:text-white">
+                <span className="text-muted-foreground dark:text-white/80">Tax</span>
                 <span>{formatMoney(tax)}</span>
               </div>
-              <div className="flex items-center justify-between gap-3 border-t border-border pt-3 text-base font-bold">
+              <div className="flex items-center justify-between gap-3 border-t border-border pt-3 text-base font-bold dark:text-white">
                 <span>Total</span>
                 <span>{formatMoney(documentTotal)}</span>
               </div>
