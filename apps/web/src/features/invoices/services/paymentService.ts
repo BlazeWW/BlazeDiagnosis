@@ -1,3 +1,4 @@
+import { ApiRequestError } from '@/lib/api/response';
 import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { invoices, payments } from '@/db/schema';
@@ -71,8 +72,11 @@ export async function markInvoicePaid(
       });
 
     if (!updatedInvoice) {
-      throw new Error('Payment exceeds outstanding balance');
-    }
+throw new ApiRequestError(
+  'VALIDATION_ERROR',
+  422,
+  'Payment exceeds outstanding balance',
+);    }
 
     const newAmountPaid = Number(updatedInvoice.amountPaid);
     const newStatus = getInvoicePaymentStatus(invoiceTotal, newAmountPaid);
@@ -163,8 +167,11 @@ export async function recordPaymentCorrection(
       });
 
     if (!updatedInvoice) {
-      throw new Error('Correction amount cannot exceed amount paid');
-    }
+      throw new ApiRequestError(
+        'VALIDATION_ERROR',
+         422,
+         'Correction amount cannot exceed amount paid',
+        );    }
 
     const newAmountPaid = Number(updatedInvoice.amountPaid);
     const newStatus = getInvoicePaymentStatus(invoiceTotal, newAmountPaid);
