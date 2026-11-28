@@ -139,7 +139,7 @@ body {
     radial-gradient(circle at bottom right, rgb(56 189 248 / 9%), transparent 30rem),
     var(--background);
 }
-.text-primary-foreground[style*="background"],
-.text-primary-foreground[style*="background"] * {
+html .text-primary-foreground[style*="background"],
+html .text-primary-foreground[style*="background"] * {
   color: #fff;
 }
