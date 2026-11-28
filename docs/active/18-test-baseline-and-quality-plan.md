@@ -21,6 +21,35 @@ pnpm test:watch
 pnpm test:coverage
 ```
 
+## Continuous integration (BD-064)
+
+Every pull request into `main` and every push to `main` runs the **CI** workflow in `.github/workflows/ci.yml`.
+
+| Step | Command | Fails when |
+| --- | --- | --- |
+| Install | `pnpm install --frozen-lockfile` | `pnpm-lock.yaml` is out of date or broken |
+| Lint | `pnpm lint` | there is any ESLint **error** (warnings do not fail) |
+| Typecheck | `pnpm typecheck` | `next typegen` + `tsc --noEmit` reports an error |
+| Test | `pnpm test` | any Vitest test fails |
+| Build | `pnpm build` | the production build fails |
+
+- **Required check name:** `Quality gates` (shown on a PR as "CI / Quality gates"). Once a repo admin enables it in branch protection for `main`, a PR cannot merge until it is green.
+- **Versions:** Node 22 (Next.js needs 20.9 or newer) and pnpm from `packageManager` in the root `package.json`, so CI uses the same pnpm as local work.
+- **Cache:** `actions/setup-node` caches the pnpm store, keyed on `pnpm-lock.yaml`. A changed lockfile means a fresh install.
+- **No secrets and no real database.** The job sets a placeholder `DATABASE_URL` because `db/client.ts` requires one at import time; tests mock the database and nothing connects to it. Never add production credentials to CI.
+- **Speed:** a newer push to the same branch cancels the run still in progress. The job times out after 20 minutes.
+
+### Reading a failed run
+
+1. Open the PR's **Checks** tab → **CI** → **Quality gates**.
+2. The first red step is the cause; later steps are skipped. Expand it to see the log.
+3. Reproduce locally with the same command from the repo root, for example `pnpm typecheck`.
+4. Push the fix to the same branch. CI re-runs automatically.
+
+A PR far behind `main` can fail on problems already fixed on `main` (for example the old lockfile). Use **Update from main** before debugging.
+
+Out of scope for this workflow: migration checks against a real database (BD-069), browser end-to-end tests (BD-066) and deployment (BD-068).
+
 ## Baseline test coverage added
 
 ### Shared utility tests
@@ -124,7 +153,7 @@ Every new feature must include:
 
 ### Cloud Administration
 
-- Add CI job to run `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
+- ~~Add CI job to run `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.~~ Done in BD-064, see [Continuous integration](#continuous-integration-bd-064).
 - Add test database provisioning plan.
 - Add migration validation job.
 
@@ -143,4 +172,5 @@ A pull request is not ready unless:
 - New or changed APIs have tests.
 - Tests pass locally.
 - Lint, typecheck, and build pass locally.
+- The `Quality gates` CI check is green on the pull request.
 - The pull request checklist references the relevant test files.

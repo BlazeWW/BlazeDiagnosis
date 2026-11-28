@@ -1,18 +1,24 @@
-import { and, eq } from 'drizzle-orm';
-
+import { and, count, eq, gte, inArray } from 'drizzle-orm';
 import { db } from '@/db/client';
+import { jobCards } from '@/db/schema/jobs';
+import { quotes } from '@/db/schema/quotes';
 import {
   tenantBranding,
   tenantFeatureFlags,
+  tenantMembers,
   tenantSettings,
   tenants,
 } from '@/db/schema';
+import { writeAuditLog } from '@/features/audit/services/auditService';
 import {
   requirePermission,
   requireTenantPermission,
 } from '@/lib/authorization/guards';
 
-import { writeAuditLog } from '@/features/audit/services/auditService';
+import {
+  enforceTenantFeature,
+  enforceTenantLimit,
+} from './subscriptionService';
 
 export async function createTenant(input: {
   name: string;
@@ -115,6 +121,7 @@ export async function updateTenantBrandingConfig(
   },
 ) {
   await requireTenantPermission(tenantId, 'tenant.settings.update');
+  await enforceTenantFeature(tenantId, 'custom_branding');
 
   const [existingBranding] = await db
     .select()
@@ -153,6 +160,25 @@ export async function updateTenantBrandingConfig(
   });
 
   return { branding, documentSettings };
+}
+
+export async function assertCanProvisionStaffSeat(
+  tenantId: string,
+): Promise<void> {
+  await requireTenantPermission(tenantId, 'platform.tenants.manage');
+
+  const [row] = await db
+    .select({ total: count() })
+    .from(tenantMembers)
+    .where(
+      and(
+        eq(tenantMembers.tenantId, tenantId),
+        eq(tenantMembers.status, 'active'),
+      ),
+    );
+
+  const projectedSeats = Number(row?.total ?? 0) + 1;
+  await enforceTenantLimit(tenantId, 'max_staff_seats', projectedSeats);
 }
 
 export async function setTenantFeatureFlag(
@@ -197,4 +223,42 @@ export async function setTenantFeatureFlag(
   });
 
   return flag;
+}
+
+export async function getTenantUsageMetrics(tenantId: string, days = 30) {
+  if (!Number.isFinite(days) || days <= 0) {
+    throw new Error('days must be a positive integer');
+  }
+
+  await requireTenantPermission(tenantId, 'platform.tenants.manage');
+
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+  const [jobCardRow] = await db
+    .select({ total: count() })
+    .from(jobCards)
+    .where(
+      and(
+        eq(jobCards.tenantId, tenantId),
+        gte(jobCards.createdAt, since),
+      ),
+    );
+
+  const [quoteRow] = await db
+    .select({ total: count() })
+    .from(quotes)
+    .where(
+      and(
+        eq(quotes.tenantId, tenantId),
+        gte(quotes.createdAt, since),
+        inArray(quotes.status, ['sent', 'approved', 'locked']),
+      ),
+    );
+
+  return {
+    tenantId,
+    days,
+    jobsCreated: Number(jobCardRow?.total ?? 0),
+    quotesSent: Number(quoteRow?.total ?? 0),
+  };
 }

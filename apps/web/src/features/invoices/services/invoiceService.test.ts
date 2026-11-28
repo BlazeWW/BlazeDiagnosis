@@ -1,98 +1,101 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createSelectWhereChain, createSelectWhereLimitChain } from '@/test/drizzleMock';
-import { calculateDocumentTotals, centsToString } from '@/lib/money/cents';
 
-const authGuardMock = vi.hoisted(() => ({
-  requireTenantPermission: vi.fn(),
-}));
+import { calculateDocumentTotals, centsToString } from '@/lib/money/cents';
+import {
+  createSelectWhereChain,
+  createSelectWhereLimitChain,
+} from '@/test/drizzleMock';
+
+const authGuardMock = vi.hoisted(() => ({ requireTenantPermission: vi.fn() }));
 const auditWriterMock = vi.hoisted(() => ({
-  default: {
-    writeAudit: vi.fn(),
-  },
+  default: { writeAudit: vi.fn() },
 }));
 const notificationServiceMock = vi.hoisted(() => ({
   createInvoiceNotificationRecord: vi.fn(),
 }));
-const dbMock = vi.hoisted(() => ({
-  transaction: vi.fn(),
-}));
+const numberingMock = vi.hoisted(() => ({ allocateInvoiceNumber: vi.fn() }));
+const dbMock = vi.hoisted(() => ({ transaction: vi.fn() }));
 
 vi.mock('@/lib/authorization/guards', () => authGuardMock);
 vi.mock('@/lib/auditWriter', () => auditWriterMock);
-vi.mock('@/features/notifications/services/notificationService', () => notificationServiceMock);
+vi.mock(
+  '@/features/notifications/services/notificationService',
+  () => notificationServiceMock,
+);
+vi.mock('./invoiceNumbering', () => numberingMock);
 vi.mock('@/db/client', () => ({ db: dbMock }));
 
 import { createInvoiceFromApprovedQuote } from './invoiceService';
 
-describe('invoiceService', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    authGuardMock.requireTenantPermission.mockResolvedValue(undefined);
-  });
+const approvedQuote = {
+  customerId: 'customer-1',
+  id: 'quote-1',
+  jobCardId: 'job-1',
+  status: 'approved',
+};
 
-  it('creates an invoice from approved and billable quote items', async () => {
-    const tx = {
-      insert: vi
-        .fn()
-        .mockReturnValueOnce({
-          values: vi.fn(() => ({
-            returning: vi.fn(() =>
-              Promise.resolve([
-                {
-                  id: 'invoice-1',
-                  invoiceNumber: 'INV-1',
-                  total: '115.00',
-                },
-              ]),
-            ),
-          })),
-        })
-        .mockReturnValueOnce({
-          values: vi.fn(() => Promise.resolve()),
-        }),
-      select: vi
-        .fn()
-        .mockReturnValueOnce({
-          from: vi.fn(() => ({
-            where: vi.fn(() => ({
-              limit: vi.fn(() =>
-                Promise.resolve([
-                  {
-                    customerId: 'customer-1',
-                    id: 'quote-1',
-                    jobCardId: 'job-1',
-                    status: 'approved',
-                  },
-                ]),
-              ),
-            })),
-          })),
-        })
-        .mockReturnValueOnce({
-          from: vi.fn(() => ({
-            where: vi.fn(() =>
-              Promise.resolve([
-                {
-                  category: 'part',
-                  description: 'Brake pads',
-                  discount: '0',
-                  id: 'line-1',
-                  quantity: '1',
-                  taxRate: '15',
-                  total: '115.00',
-                  unitPrice: '100',
-                },
-              ]),
-            ),
-          })),
-        }),
-      update: vi.fn(() => ({
-        set: vi.fn(() => ({
-          where: vi.fn(() => Promise.resolve()),
+// One quote line as the database returns it (numbers arrive as strings).
+function line(overrides: Record<string, string> = {}) {
+  return {
+    category: 'part',
+    description: 'Brake pads',
+    discount: '0',
+    id: 'line-1',
+    quantity: '1',
+    taxRate: '15',
+    total: '100.00',
+    unitPrice: '100.00',
+    ...overrides,
+  };
+}
+
+// A fake transaction: the locked quote, any existing invoice for it, then the billable lines.
+function createInvoiceTx(
+  lines: Array<Record<string, string>>,
+  quote: Record<string, string> = approvedQuote,
+  existingInvoices: Array<Record<string, string>> = [],
+) {
+  const lockFor = vi.fn(() => Promise.resolve([quote]));
+  const invoiceValues = vi.fn(() => ({
+    returning: vi.fn(() =>
+      Promise.resolve([
+        { id: 'invoice-1', invoiceNumber: 'INV-2026-0001', total: '0.00' },
+      ]),
+    ),
+  }));
+  const lineValues = vi.fn(() => Promise.resolve());
+  const tx = {
+    insert: vi
+      .fn()
+      .mockReturnValueOnce({ values: invoiceValues })
+      .mockReturnValueOnce({ values: lineValues }),
+    select: vi
+      .fn()
+      .mockReturnValueOnce({
+        from: vi.fn(() => ({
+          where: vi.fn(() => ({ limit: vi.fn(() => ({ for: lockFor })) })),
         })),
-      })),
-    };
-    dbMock.transaction.mockImplementation((callback) => callback(tx));
+      })
+      .mockReturnValueOnce(createSelectWhereLimitChain(existingInvoices))
+      .mockReturnValueOnce(createSelectWhereChain(lines)),
+    update: vi.fn(() => ({
+      set: vi.fn(() => ({ where: vi.fn(() => Promise.resolve()) })),
+    })),
+  };
+  dbMock.transaction.mockImplementation((callback) => callback(tx));
+
+  return { invoiceValues, lineValues, lockFor, tx };
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  authGuardMock.requireTenantPermission.mockResolvedValue(undefined);
+  numberingMock.allocateInvoiceNumber.mockResolvedValue('INV-2026-0001');
+});
+
+describe('invoiceService', () => {
+  it('creates an invoice from approved and billable quote items', async () => {
+    const { tx } = createInvoiceTx([line({ total: '115.00' })]);
 
     await expect(
       createInvoiceFromApprovedQuote('tenant-1', 'quote-1', 'actor-1'),
@@ -105,23 +108,16 @@ describe('invoiceService', () => {
     expect(auditWriterMock.default.writeAudit).toHaveBeenCalledWith(
       expect.objectContaining({ resource: 'INVOICE', resourceId: 'invoice-1' }),
     );
-    expect(notificationServiceMock.createInvoiceNotificationRecord).toHaveBeenCalledWith(
+    expect(
+      notificationServiceMock.createInvoiceNotificationRecord,
+    ).toHaveBeenCalledWith(
       expect.objectContaining({ invoiceId: 'invoice-1', tenantId: 'tenant-1' }),
       tx,
     );
   });
 
   it('prevents invoicing locked quotes', async () => {
-    const tx = {
-      select: vi.fn(() => ({
-        from: vi.fn(() => ({
-          where: vi.fn(() => ({
-            limit: vi.fn(() => Promise.resolve([{ id: 'quote-1', status: 'locked' }])),
-          })),
-        })),
-      })),
-    };
-    dbMock.transaction.mockImplementation((callback) => callback(tx));
+    createInvoiceTx([], { ...approvedQuote, status: 'locked' });
 
     await expect(
       createInvoiceFromApprovedQuote('tenant-1', 'quote-1', 'actor-1'),
@@ -130,54 +126,6 @@ describe('invoiceService', () => {
 });
 
 describe('BD-025: invoice totals', () => {
-  // One quote line as the database returns it (numbers arrive as strings).
-  function line(overrides: Record<string, string> = {}) {
-    return {
-      category: 'part',
-      description: 'Brake pads',
-      discount: '0',
-      id: 'line-1',
-      quantity: '1',
-      taxRate: '15',
-      total: '100.00',
-      unitPrice: '100.00',
-      ...overrides,
-    };
-  }
-
-  // A fake transaction: an approved quote, then the given billable lines.
-  function createInvoiceTx(lines: Array<Record<string, string>>) {
-    const invoiceValues = vi.fn(() => ({
-      returning: vi.fn(() =>
-        Promise.resolve([{ id: 'invoice-1', invoiceNumber: 'INV-1', total: '0.00' }]),
-      ),
-    }));
-    const lineValues = vi.fn(() => Promise.resolve());
-    const tx = {
-      insert: vi
-        .fn()
-        .mockReturnValueOnce({ values: invoiceValues })
-        .mockReturnValueOnce({ values: lineValues }),
-      select: vi
-        .fn()
-        .mockReturnValueOnce(
-          createSelectWhereLimitChain([
-            { customerId: 'customer-1', id: 'quote-1', jobCardId: 'job-1', status: 'approved' },
-          ]),
-        )
-        .mockReturnValueOnce(createSelectWhereChain(lines)),
-      update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(() => Promise.resolve()) })) })),
-    };
-    dbMock.transaction.mockImplementation((callback) => callback(tx));
-
-    return { invoiceValues, lineValues };
-  }
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    authGuardMock.requireTenantPermission.mockResolvedValue(undefined);
-  });
-
   it('applies a R10 discount before VAT (2 x R100 = R218.50)', async () => {
     const { invoiceValues } = createInvoiceTx([
       line({ discount: '10.00', quantity: '2', total: '200.00' }),
@@ -243,7 +191,11 @@ describe('BD-025: invoice totals', () => {
     await createInvoiceFromApprovedQuote('tenant-1', 'quote-1', 'actor-1');
 
     expect(invoiceValues).toHaveBeenCalledWith(
-      expect.objectContaining({ subtotal: '150.00', taxTotal: '22.50', total: '172.50' }),
+      expect.objectContaining({
+        subtotal: '150.00',
+        taxTotal: '22.50',
+        total: '172.50',
+      }),
     );
     expect(lineValues).toHaveBeenCalledWith([
       expect.objectContaining({ quoteLineItemId: 'line-1' }),
@@ -256,13 +208,20 @@ describe('BD-025: invoice totals', () => {
 
     await expect(
       createInvoiceFromApprovedQuote('tenant-1', 'quote-1', 'actor-1'),
-    ).rejects.toThrow('Cannot create an invoice without approved or billable quote items.');
+    ).rejects.toThrow(
+      'Cannot create an invoice without approved or billable quote items.',
+    );
   });
 
   it('saves exactly what the shared money module calculates', async () => {
     const lines = [
       line({ discount: '10.00', quantity: '2', total: '200.00' }),
-      line({ id: 'line-2', quantity: '1.5', total: '675.00', unitPrice: '450.00' }),
+      line({
+        id: 'line-2',
+        quantity: '1.5',
+        total: '675.00',
+        unitPrice: '450.00',
+      }),
     ];
     const { invoiceValues } = createInvoiceTx(lines);
 
@@ -272,5 +231,72 @@ describe('BD-025: invoice totals', () => {
     expect(invoiceValues).toHaveBeenCalledWith(
       expect.objectContaining({ total: centsToString(expected.total) }),
     );
+  });
+describe('BD-027: issuance rules', () => {
+  it('locks the quote row before reading it', async () => {
+    const { lockFor } = createInvoiceTx([line()]);
+
+    await createInvoiceFromApprovedQuote('tenant-1', 'quote-1', 'actor-1');
+
+    expect(lockFor).toHaveBeenCalledWith('update');
+  });
+
+  it('rejects a quote that is not approved', async () => {
+    createInvoiceTx([line()], { ...approvedQuote, status: 'draft' });
+
+    await expect(
+      createInvoiceFromApprovedQuote('tenant-1', 'quote-1', 'actor-1'),
+    ).rejects.toThrow('Only approved quotes can be invoiced.');
+  });
+
+  it('accepts a partially approved quote', async () => {
+    createInvoiceTx([line()], {
+      ...approvedQuote,
+      status: 'partially_approved',
+    });
+
+    await expect(
+      createInvoiceFromApprovedQuote('tenant-1', 'quote-1', 'actor-1'),
+    ).resolves.toMatchObject({ id: 'invoice-1' });
+  });
+
+  it('saves the quote id, the allocated number and the issued status', async () => {
+    const { invoiceValues } = createInvoiceTx([line()]);
+
+    await createInvoiceFromApprovedQuote('tenant-1', 'quote-1', 'actor-1');
+
+    expect(invoiceValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        invoiceNumber: 'INV-2026-0001',
+        issuedAt: expect.any(Date),
+        quoteId: 'quote-1',
+        status: 'issued',
+      }),
+    );
+  });
+
+  it('allocates the number inside the same transaction', async () => {
+    const { tx } = createInvoiceTx([line()]);
+
+    await createInvoiceFromApprovedQuote('tenant-1', 'quote-1', 'actor-1');
+
+    expect(numberingMock.allocateInvoiceNumber).toHaveBeenCalledWith(
+      tx,
+      'tenant-1',
+      expect.any(Date),
+    );
+  });
+
+  it('returns the existing invoice on a retry and creates nothing new', async () => {
+    const { tx } = createInvoiceTx([line()], approvedQuote, [
+      { id: 'invoice-9', invoiceNumber: 'INV-2026-0009' },
+    ]);
+
+    await expect(
+      createInvoiceFromApprovedQuote('tenant-1', 'quote-1', 'actor-1'),
+    ).resolves.toMatchObject({ id: 'invoice-9' });
+
+    expect(tx.insert).not.toHaveBeenCalled();
+    expect(numberingMock.allocateInvoiceNumber).not.toHaveBeenCalled();
   });
 });

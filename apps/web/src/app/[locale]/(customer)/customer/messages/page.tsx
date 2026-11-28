@@ -4,21 +4,40 @@ import {
   FeatureMetricGrid,
   FeatureRecordList,
 } from '@/components/common/featureDashboard';
-import { customerChecklist, customerMessageRecords } from '@/lib/sampleWorkflows';
+import {
+  customerChecklist,
+  customerMessageRecords,
+} from '@/lib/sampleWorkflows';
+import { ChatInbox } from '@/features/chat/components/chatInbox';
 
 export default function CustomerMessagesPage() {
   return (
     <AppShell
-      description="Customer-to-station chat threads with service, quote, invoice, and collection context."
       surface="customer"
       title="Messages"
     >
       <FeatureMetricGrid
         items={[
-          { description: 'Requires customer response', label: 'Open threads', value: '1' },
-          { description: 'Unread updates', label: 'Unread', value: '1' },
-          { description: 'Resolved discussions', label: 'Closed', value: '9' },
-          { description: 'Average station reply', label: 'Response time', value: '18m' },
+          {
+            description: 'Requires customer response',
+            label: 'Open threads',
+            value: '1',
+          },
+          {
+            description: 'Unread updates',
+            label: 'Unread',
+            value: '1',
+          },
+          {
+            description: 'Resolved discussions',
+            label: 'Closed',
+            value: '9',
+          },
+          {
+            description: 'Average station reply',
+            label: 'Response time',
+            value: '18m',
+          },
         ]}
       />
 
@@ -33,6 +52,8 @@ export default function CustomerMessagesPage() {
         items={customerChecklist}
         title="Messaging checklist"
       />
+
+      <ChatInbox surface="customer" />
     </AppShell>
   );
 }

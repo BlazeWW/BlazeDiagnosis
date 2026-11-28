@@ -37,6 +37,7 @@ Failure:
 - [ ] Add request IDs to logs.
 - [x] **Reject cross-tenant job card references in parts requests (BD-031).**
 - [x] **Validate parts request item quantities must be > 0 (BD-031).**
+- [x] **Aggregate usage reports must be tenant-scoped and expose no PII (BD-048).**
 
 ## Tenant feature flags (BD-046)
 
@@ -91,6 +92,9 @@ Scope note: Quote, invoice, and parts-request `[id]` routes do not yet exist in 
 - [ ] `/api/quotes`
 - [ ] `/api/parts-requests`
 - [ ] `/api/supplier-responses`
+- [ ] `/api/parts-orders`
+- [ ] `/api/parts-orders/[id]`
+- [ ] `/api/parts-orders/[id]/transitions`
 - [ ] `/api/tenant-branding`
 - [ ] `/api/job-cards/[id]/work`
 - [ ] `/api/job-cards/[id]/labour`
@@ -116,8 +120,77 @@ Scope note: Quote, invoice, and parts-request `[id]` routes do not yet exist in 
 - [ ] Invoice DTO.
 - [x] Parts request DTO (Validated in `createPartsRequestDraft`).
 - [ ] Supplier response DTO.
+- [ ] Purchase order DTO. See `docs/active/purchase-order-lifecycle.md`.
 - [ ] Tenant branding DTO.
 - [ ] Audit event DTO.
+
+## Validation and error handling
+
+The following API error responses were verified during BD-006 testing:
+
+| Scenario | HTTP status | Error code |
+|---|---:|---|
+| Invalid request data rejected by Zod | 422 | VALIDATION_ERROR |
+| Malformed JSON request body | 400 | BAD_REQUEST |
+| Tenant access denied | 403 | FORBIDDEN |
+| Missing customer or vehicle | 404 | NOT_FOUND |
+| Unexpected server error | 500 | INTERNAL_SERVER_ERROR |
+
+- Zod validation errors use the standard failure envelope.
+- Malformed JSON returns a safe client error instead of an internal server error.
+- Tenant access failures return a forbidden response.
+- Unexpected server errors use a generic message to avoid exposing internal details.
+- Existing success response envelopes and successful route status codes are preserved.
+
+## Compatibility notes
+
+The following legacy routes are compatibility aliases for canonical routes:
+
+| Legacy route | Canonical route |
+|---|---|
+| `/api/vehicle` | `/api/vehicles` |
+| `/api/vehicle/[id]` | `/api/vehicles/[id]` |
+| `/api/parts-request` | `/api/parts-requests` |
+| `/api/supplier-response` | `/api/supplier-responses` |
+
+BD-006 verification confirmed that the legacy route handlers re-export their canonical handlers, including GET, PATCH and DELETE for vehicle-by-ID routes.
+These aliases remain available for existing consumers. Removing them should be treated as a separate compatibility change and should only happen after consumers have migrated to the canonical routes.
+
+## BD-006 API audit findings
+
+- Customer and vehicle create/update validation uses Zod schemas.
+- Vehicle updates use the shared `updateVehicleSchema`.
+- Quote creation and parts catalogue creation have request validation and route tests.
+- Supplier response routes validate request data and enforce tenant access.
+- The `createPartsRequestSchema` currently has no usage in an API route. No new endpoint was introduced as part of this task.
+- No invoice API route was found under `apps/web/src/app/api`. Invoice creation is currently handled by the invoice service. No new invoice request DTO or endpoint was invented.
+- Legacy route aliases were retained and tested against their canonical handlers.
+
+These findings describe the inspected code at the time of the BD-006 review.
+
+## BD-006 verification record
+
+### Focused tests
+
+- Test files: 11 passed.
+- Tests: 57 passed, 0 failed.
+- Command: `pnpm --dir apps/web exec vitest run` followed by the 11 BD-006 test file paths.
+
+### Lint
+
+- Targeted ESLint on the modified BD-006 files passed.
+- Full project lint reported issues in components and services outside the BD-006 changes.
+
+### Typecheck and build
+
+- Typecheck did not pass because of existing vehicle import casing and quote permission errors outside the BD-006 changes.
+- Build did not pass because of the existing vehicle import casing issue.
+- These unrelated issues were not changed as part of BD-006.
+
+### Scope
+
+- Existing API success envelopes and route status codes were preserved.
+- Legacy route aliases were retained.
 
 ## Service-request persistence API
 
@@ -330,3 +403,82 @@ Rules:
 - Corrections update the row in place. `audit_logs` (`job_card.labour_corrected`) keeps the previous values, new values and the reason. This is the correction history.
 - Customers only receive items marked `customer` on their own job card. No internal notes, internal labour or technician ids (`jobWorkSerializers.ts`). Other non-staff users get 403.
 - The audit actor is stored in `newValue.actor` (Auth0 id + email) until Auth0 ids are linked to `users`.
+
+## Supplier response form (BD-032)
+
+### Validation contract
+`createSupplierResponseSchema` (in `apps/web/src/features/parts/schemas/supplierResponseSchema.ts`):
+- `quantityAvailable` must be a positive number (> 0).
+- `unitPrice` must be non-negative (>= 0).
+- `availability` must be one of `available`, `partial`, `unavailable`.
+- `eta`, if provided, must be a valid ISO datetime in the future.
+- `items` must contain at least one entry.
+
+### Route contract
+`POST /api/supplier-responses`:
+- Resolves tenant via `requireTenantContext()`.
+- Rejects `tenantId` in body that does not match the caller's tenant (403).
+- Verifies `supplierId` is linked to the caller's tenant via `tenantSuppliers` with `status = 'active'` (403 otherwise).
+- Returns `201` with `{ data: { response }, success: true }` on success.
+
+Tests: `apps/web/src/app/api/supplier-responses/route.test.ts` (7 tests).
+
+### UI
+`SupplierResponseForm` (`apps/web/src/components/forms/supplierResponseForm.tsx`) renders price, quantity, availability, and ETA inputs; submits via `POST /api/supplier-responses`. Wired into `apps/web/src/app/[locale]/(supplier)/supplier/requests/page.tsx` with a fixture request pending the supplier-facing list endpoint.
+
+Tests: `apps/web/src/components/forms/supplierResponseForm.test.tsx` (4 tests) — static render verification via `renderToStaticMarkup`.
+
+### Out of scope
+- Supplier-facing request list endpoint (`GET /api/supplier/requests`) — required to render one form per real request.
+- Alternate-part field in the form — follow-up.
+- Decline action — follow-up.
+- State retention after API errors — covered by the component's `error` prop but not exercised end-to-end.
+
+## Usage analytics (BD-048)
+
+### Metric dictionary
+| Metric | Source | Definition |
+|---|---|---|
+| `jobsCreated` | `job_cards` table | `count(*)` where `tenantId` matches and `createdAt >= now - days` |
+| `quotesSent` | `quotes` table | `count(*)` where `tenantId` matches, `createdAt >= now - days`, and `status IN ('sent','approved','locked')` |
+
+**Dropped from initial design:** `activeUsers` — `audit_logs.actorUserId` is mostly empty until Auth0 user linking completes. Will be reintroduced once user identity is reliably populated.
+
+### Contract
+`getTenantUsageMetrics(tenantId, days = 30)`:
+- **Requires permission:** `platform.tenants.manage`.
+- **Tenant-scoped:** filters `tenantId` on `job_cards` and `quotes`.
+- **Date-filtered:** only rows where `createdAt >= now - days`.
+- **Safe empty state:** returns zero-valued metrics when no rows exist.
+- **Input validation:** `days` must be a positive finite number.
+- **No PII exposure:** aggregate counts only — no per-row detail leaves the service.
+
+### Query notes
+- Uses indexed columns (`tenant_id`, `created_at` on `job_cards` and `quotes`).
+- Quote count includes `sent`, `approved`, and `locked` statuses.
+
+### Out of scope
+- `activeUsers` metric — deferred until Auth0 user linking lands.
+- UI wiring (`apps/web/src/app/[locale]/(platform)/platform/usage/page.tsx`) is a follow-up task.
+
+## Customer dashboard (BD-036)
+
+### Contract
+`getCustomerDashboard()`:
+- **Identity:** resolved from the signed-in user via `requireUser()` → `customers.user_id` lookup, never from a client-supplied ID. Same pattern as BD-037 (customer service history).
+- **Requires:** active tenant (`user.activeTenantId`) and a linked customer record.
+- **Returns:** counts + preview items for vehicles, open quotes, open invoices, pending requests.
+- **No internal fields exposed:** SELECT clauses exclude `notes`, `customer_concern`, `vin`, `amount_paid`, `tax_total`, `subtotal` (asserted by `customerDashboardRepository.test.ts`).
+- **Tenant + customer scoped:** every query filters `tenantId` AND `customerId`.
+
+### Error states
+- Signed out → `signed_out` empty state with sign-in link.
+- No linked customer profile → `not_linked` empty state.
+- Unexpected failure → `ErrorState` with retry message.
+
+### Tests
+- `customerDashboardRepository.test.ts` (6 tests) — SQL scoping via `drizzle.mock`.
+- `customerDashboardService.test.ts` (6 tests) — identity resolution + return shape.
+
+### Out of scope
+- Populated-state UI requires a real DB with a customer linked to the signed-in Auth0 subject (seed script is a follow-up). Signed-out/not-linked/error states are verified via dev server.

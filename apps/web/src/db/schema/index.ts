@@ -10,3 +10,4 @@ export * from './suppliers';
 export * from './tenants';
 export * from './users';
 export * from './vehicles';
+export * from './email-deliveries';

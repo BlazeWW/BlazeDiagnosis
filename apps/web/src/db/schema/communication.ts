@@ -3,6 +3,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
@@ -35,21 +36,64 @@ export const chatThreads = pgTable(
   ],
 );
 
-export const chatMessages = pgTable('chat_messages', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  tenantId: uuid('tenant_id')
-    .references(() => tenants.id, { onDelete: 'cascade' })
-    .notNull(),
-  threadId: uuid('thread_id')
-    .references(() => chatThreads.id, { onDelete: 'cascade' })
-    .notNull(),
-  senderUserId: uuid('sender_user_id').references(() => users.id),
-  body: text('body').notNull(),
-  visibility: visibilityEnum('visibility').notNull().default('internal'),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-});
+export const chatThreadParticipants = pgTable(
+  'chat_thread_participants',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    threadId: uuid('thread_id')
+      .references(() => chatThreads.id, { onDelete: 'cascade' })
+      .notNull(),
+    userId: text('user_id').notNull(),
+    participantType: varchar('participant_type', { length: 20 })
+      .$type<'customer' | 'staff' | 'supplier'>()
+      .notNull(),
+    lastReadAt: timestamp('last_read_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('chat_thread_participants_thread_user_idx').on(
+      table.threadId,
+      table.userId,
+    ),
+    index('chat_thread_participants_tenant_user_idx').on(
+      table.tenantId,
+      table.userId,
+    ),
+  ],
+);
+
+export const chatMessages = pgTable(
+  'chat_messages',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    tenantId: uuid('tenant_id')
+      .references(() => tenants.id, { onDelete: 'cascade' })
+      .notNull(),
+    threadId: uuid('thread_id')
+      .references(() => chatThreads.id, { onDelete: 'cascade' })
+      .notNull(),
+    senderUserId: text('sender_user_id'),
+    body: text('body').notNull(),
+    visibility: visibilityEnum('visibility').notNull().default('internal'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index('chat_messages_tenant_thread_created_idx').on(
+      table.tenantId,
+      table.threadId,
+      table.createdAt,
+    ),
+  ],
+);
 
 export const notifications = pgTable(
   'notifications',

@@ -1,4 +1,4 @@
-import { createVehicleSchema } from '@/features/vehicles/schemas/vehicleSchema';
+import { updateVehicleSchema } from '@/features/vehicles/schemas/vehicleSchema';
 import {
   deleteVehicle,
   getVehicleById,
@@ -30,7 +30,7 @@ export async function PATCH(request: Request, { params }: ApiRouteContext) {
   try {
     const { id } = await params;
     const tenant = await requireTenantContext();
-    const input = createVehicleSchema.partial().parse(await request.json());
+    const input = updateVehicleSchema.parse(await request.json());
     const vehicle = await updateVehicle(tenant.tenantId, id, input);
 
     return apiOk({ vehicle });

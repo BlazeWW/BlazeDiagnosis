@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { jsonRequest, readJson } from '@/test/apiRouteTestUtils';
 
+import { TenantAccessError } from '@/lib/authorization/guards';
+
 const tenantContextMock = vi.hoisted(() => ({
   requireTenantContext: vi.fn(),
 }));
@@ -43,13 +45,17 @@ const uuid = '11111111-1111-4111-8111-111111111111';
 describe('/api/supplier-responses', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    tenantContextMock.requireTenantContext.mockResolvedValue({ tenantId: 'tenant-1' });
+    tenantContextMock.requireTenantContext.mockResolvedValue({
+      tenantId: 'tenant-1',
+    });
     sessionMock.getCurrentUser.mockResolvedValue({ tenantRole: 'site_manager' });
     guardsMock.requireTenantPermission.mockResolvedValue(undefined);
   });
 
   it('requires partsRequestId for GET', async () => {
-    const response = await GET(new Request('http://localhost/api/supplier-responses'));
+    const response = await GET(
+      new Request('http://localhost/api/supplier-responses'),
+    );
 
     expect(response.status).toBe(400);
     await expect(readJson(response)).resolves.toMatchObject({
@@ -138,6 +144,14 @@ describe('/api/supplier-responses', () => {
     const responseValues = vi.fn(() => ({ returning }));
     const itemValues = vi.fn(() => Promise.resolve());
 
+    dbMock.select.mockReturnValueOnce({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          limit: vi.fn(() => Promise.resolve([{ id: uuid }])),
+        })),
+      })),
+    });
+
     dbMock.insert
       .mockReturnValueOnce({ values: responseValues })
       .mockReturnValueOnce({ values: itemValues });
@@ -176,4 +190,96 @@ describe('/api/supplier-responses', () => {
       }),
     ]);
   });
+
+  it('rejects invalid supplier response payloads', async () => {
+    const response = await POST(
+      jsonRequest('http://localhost/api/supplier-responses', {
+        items: [],
+        partsRequestId: 'invalid-id',
+        supplierId: 'invalid-id',
+      }),
+    );
+
+    expect(response.status).toBe(422);
+    await expect(readJson(response)).resolves.toMatchObject({
+      error: { code: 'VALIDATION_ERROR' },
+      success: false,
+    });
+  });
+
+  it('rejects requests when tenant access is denied', async () => {
+    tenantContextMock.requireTenantContext.mockRejectedValue(
+      new TenantAccessError(),
+    );
+
+    const response = await GET(
+      new Request(
+        `http://localhost/api/supplier-responses?partsRequestId=${uuid}`,
+      ),
+    );
+
+    expect(response.status).toBe(403);
+    await expect(readJson(response)).resolves.toMatchObject({
+      error: { code: 'FORBIDDEN' },
+      success: false,
+    });
+  });
+
+  it('rejects POST when supplierId is not linked to the caller tenant', async () => {
+    queueSelects([[]]);
+
+    const response = await POST(
+      jsonRequest('http://localhost/api/supplier-responses', {
+        items: [
+          {
+            partId: uuid,
+            partName: 'Brake pads',
+            quantityAvailable: 4,
+            unitPrice: 950,
+          },
+        ],
+        partsRequestId: uuid,
+        subtotal: 950,
+        supplierId: uuid,
+        tax: 142.5,
+        total: 1092.5,
+      }),
+    );
+
+    expect(response.status).toBe(403);
+    expect(dbMock.insert).not.toHaveBeenCalled();
+  });
+
+  it('allows POST when supplierId is linked to the caller tenant', async () => {
+    queueSelects([[{ id: uuid }]]);
+
+    const returning = vi.fn(() => Promise.resolve([{ id: 'response-1' }]));
+    const responseValues = vi.fn(() => ({ returning }));
+    const itemValues = vi.fn(() => Promise.resolve());
+
+    dbMock.insert
+      .mockReturnValueOnce({ values: responseValues })
+      .mockReturnValueOnce({ values: itemValues });
+
+    const response = await POST(
+      jsonRequest('http://localhost/api/supplier-responses', {
+        items: [
+          {
+            partId: uuid,
+            partName: 'Brake pads',
+            quantityAvailable: 4,
+            unitPrice: 950,
+          },
+        ],
+        partsRequestId: uuid,
+        subtotal: 950,
+        supplierId: uuid,
+        tax: 142.5,
+        total: 1092.5,
+      }),
+    );
+
+    expect(response.status).toBe(201);
+  });
+  
 });

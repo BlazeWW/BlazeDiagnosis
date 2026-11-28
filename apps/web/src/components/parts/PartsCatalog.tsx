@@ -14,6 +14,14 @@ interface IPart {
   retailPrice: string;
 }
 
+const CATALOG_LOAD_ERROR = 'Error syncing with backend.';
+
+async function fetchCatalog(): Promise<IPart[]> {
+  const res = await fetch('/api/parts');
+  if (!res.ok) throw new Error('Failed to retrieve catalog from backend service.');
+  return res.json();
+}
+
 export const PartsCatalogPanel: React.FC = () => {
   const [catalog, setCatalog] = useState<IPart[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -32,26 +40,28 @@ export const PartsCatalogPanel: React.FC = () => {
     quantityOnHand: '0.00',
   });
 
-  useEffect(() => {
-    refreshCatalog();
-  }, []);
-
   const refreshCatalog = async () => {
     setLoading(true);
     setErrorText(null);
     
     try {
-      const res = await fetch('/api/parts');
-      if (!res.ok) throw new Error('Failed to retrieve catalog from backend service.');
-      
-      const data = await res.json();
-      setCatalog(data);
-    } catch (err: any) {
-      setErrorText(err.message || 'Error syncing with backend.');
+      setCatalog(await fetchCatalog());
+    } catch (err) {
+      setErrorText(err instanceof Error ? err.message : CATALOG_LOAD_ERROR);
     } finally {
       setLoading(false);
     }
   };
+
+  // State is only set once the request settles (loading already starts as true).
+  useEffect(() => {
+    fetchCatalog()
+      .then(setCatalog)
+      .catch((err: unknown) =>
+        setErrorText(err instanceof Error ? err.message : CATALOG_LOAD_ERROR),
+      )
+      .finally(() => setLoading(false));
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm(prevForm => ({ ...prevForm, [e.target.name]: e.target.value }));
@@ -73,8 +83,8 @@ export const PartsCatalogPanel: React.FC = () => {
 
       resetForm();
       await refreshCatalog();
-    } catch (err: any) {
-      setErrorText(err.message || 'Failed to sync with API.');
+    } catch (err) {
+      setErrorText(err instanceof Error ? err.message : 'Failed to sync with API.');
     } finally {
       setIsPending(false);
     }

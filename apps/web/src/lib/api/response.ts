@@ -42,11 +42,18 @@ export function apiError(
 }
 
 export function apiValidationError(error: ZodError) {
-  return apiError('VALIDATION_ERROR', 'Validation failed.', 422, error.flatten());
+  return apiError(
+    'VALIDATION_ERROR',
+    'Validation failed.',
+    422,
+    error.flatten(),
+  );
 }
 
+// Returns a safe message without exposing internal server details
 export function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : 'Internal Server Error';
+  void error;
+  return 'Internal Server Error.';
 }
 
 export function isTenantAccessError(error: unknown) {
@@ -72,14 +79,34 @@ export function handleApiError(route: string, error: unknown) {
     return apiValidationError(error);
   }
 
+  // Preserve existing API request errors such as 404/409.
   if (error instanceof ApiRequestError) {
     return apiError(error.code, error.message, error.status);
+  }
+
+  // Authentication errors
+  if (error instanceof Error && error.message === 'Authentication required.') {
+    return apiError('UNAUTHORIZED', 'Authentication required.', 401);
+  }
+
+  // Permission errors
+  if (
+    error instanceof Error &&
+    (error.message.startsWith('Missing permission:') ||
+      error.message.startsWith('Missing one of permissions:'))
+  ) {
+    return apiError('FORBIDDEN', 'Forbidden.', 403);
   }
 
   if (isTenantAccessError(error)) {
     return apiError('FORBIDDEN', 'Forbidden.', 403, {
       reason: 'tenant_scope_mismatch',
     });
+  }
+
+  // Malformed JSON is a client request error, not a server error
+  if (error instanceof SyntaxError) {
+    return apiError('BAD_REQUEST', 'Malformed JSON request body.', 400);
   }
 
   return apiError('INTERNAL_SERVER_ERROR', getErrorMessage(error), 500);

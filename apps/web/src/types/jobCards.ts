@@ -12,6 +12,25 @@ export type EligibleStaffMember = {
   role: string;
   activeJobCount: number;
 };
+
+export type ServiceRequestStatus =
+  | 'draft'
+  | 'received'
+  | 'converted'
+  | 'cancelled';
+
+export type ServiceRequestRecord = {
+  id: string;
+  customerId: string;
+  vehicleId: string;
+  requestedService: string;
+  customerConcern?: string;
+  preferredDate?: string;
+  status: ServiceRequestStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type WorkVisibility = 'internal' | 'customer';
 
 // Staff (internal) shapes: include technician and internal entries/notes.

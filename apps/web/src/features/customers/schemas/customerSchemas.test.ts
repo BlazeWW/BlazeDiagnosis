@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createCustomerSchema } from './customerSchema';
+import { createCustomerSchema, updateCustomerSchema } from './customerSchema';
 import { customerVehicleIntakeSchema } from './customerVehicleIntakeSchema';
 
 describe('customer schemas', () => {
@@ -11,6 +11,22 @@ describe('customer schemas', () => {
       firstName: 'Ben',
       lastName: 'Henning',
       preferredLocale: 'en',
+    });
+  });
+
+  it('rejects customers with a missing first or last name', () => {
+    expect(() =>
+      createCustomerSchema.parse({ lastName: 'Henning' }),
+    ).toThrow();
+
+    expect(() =>
+      createCustomerSchema.parse({ firstName: 'Ben' }),
+    ).toThrow();
+  });
+
+  it('allows partial customer updates', () => {
+    expect(updateCustomerSchema.parse({ firstName: 'Jane' })).toEqual({
+      firstName: 'Jane',
     });
   });
 

@@ -22,9 +22,7 @@ export type AuthenticatedUser = {
 
 export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
   const authHeader = (await headers()).get('authorization');
-  const bearerToken = authHeader?.startsWith('Bearer ')
-    ? authHeader.slice(7)
-    : null;
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
   const cookieToken = (await cookies()).get('auth0_session')?.value ?? null;
   const token = bearerToken ?? cookieToken;
 
@@ -40,6 +38,7 @@ export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
         tenantRole: 'platform_admin',
         roles: ['platform_admin'],
         permissions: [
+          'invoices.read',
           'platform.tenants.manage',
           'customers.read',
           'customers.write',
@@ -64,8 +63,7 @@ export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
   const verified = await verifyAuth0Token(token);
   const payload = verified.payload as Record<string, unknown>;
 
-  const tenantMemberships =
-    (payload['custom:tenant_memberships'] as TenantMembership[]) || [];
+  const tenantMemberships = (payload['custom:tenant_memberships'] as TenantMembership[]) || [];
   const activeTenantId = (payload['custom:tenant_id'] as string) || null;
 
   return {
