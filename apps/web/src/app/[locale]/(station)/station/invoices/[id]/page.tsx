@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/card';
 import { formatCurrencyFromCents, stationInvoiceRows } from '@/lib/sampleWorkflows';
 import type { IdPageProps } from '@/types/routes';
-
+import { StationInvoiceActions } from '@/features/invoices/components/StationInvoiceActions';
 export default async function StationInvoiceDetailPage({ params }: IdPageProps) {
   const { id } = await params;
   const invoice = stationInvoiceRows.find((item) => item.id === id);
@@ -107,6 +107,17 @@ export default async function StationInvoiceDetailPage({ params }: IdPageProps) 
               </div>
             </CardContent>
           </Card>
+          <StationInvoiceActions
+          invoice={{
+            amountPaidCents: 0,
+            id: invoice.id,
+            invoiceNumber: invoice.invoiceNumber,
+            status: invoice.status,
+            statusTone: invoice.statusTone,
+            totalCents: invoice.totalCents,
+          }}
+          tenantId="station-default"
+        />
         </div>
 
         <BrandedDocumentPreview

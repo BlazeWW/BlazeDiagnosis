@@ -232,8 +232,6 @@ describe('BD-025: invoice totals', () => {
       expect.objectContaining({ total: centsToString(expected.total) }),
     );
   });
-});
-
 describe('BD-027: issuance rules', () => {
   it('locks the quote row before reading it', async () => {
     const { lockFor } = createInvoiceTx([line()]);
@@ -301,4 +299,5 @@ describe('BD-027: issuance rules', () => {
     expect(tx.insert).not.toHaveBeenCalled();
     expect(numberingMock.allocateInvoiceNumber).not.toHaveBeenCalled();
   });
+});
 });
